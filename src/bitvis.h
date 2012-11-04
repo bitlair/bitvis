@@ -16,16 +16,38 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bitvis.h"
+#ifndef BITVIS_H
+#define BITVIS_H
 
-int main (int argc, char *argv[])
+#include "jackclient.h"
+#include "fft.h"
+
+class CBitVis
 {
-  CBitVis bitvis(argc, argv);
+  public:
+    CBitVis(int argc, char *argv[]);
+    ~CBitVis();
 
-  bitvis.Setup();
-  bitvis.Process();
-  bitvis.Cleanup();
+    void Setup();
+    void Process();
+    void Cleanup();
 
-  return 0;
-}
+  private:
+    bool        m_stop;
+    CJackClient m_jackclient;
+    int         m_signalfd;
+    Cfft        m_fft;
+    float*      m_buf;
+    int         m_bufsize;
+    float*      m_fftbuf;
+    int         m_samplecounter;
+    int         m_nrffts;
 
+    void SetupSignals();
+    void ProcessSignalfd();
+    void ProcessAudio();
+    static void JackError(const char* jackerror);
+    static void JackInfo(const char* jackinfo);
+};
+
+#endif //BITVIS_H

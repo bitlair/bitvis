@@ -1,13 +1,13 @@
 /*
- * bitvis
- * Copyright (C) Bob 2012
+ * boblight
+ * Copyright (C) Bob  2009 
  * 
- * bitvis is free software: you can redistribute it and/or modify it
+ * boblight is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  * 
- * bitvis is distributed in the hope that it will be useful, but
+ * boblight is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -16,16 +16,25 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bitvis.h"
+#ifndef CMUTEX
+#define CMUTEX
 
-int main (int argc, char *argv[])
+#include "inclstdint.h"
+
+#include <pthread.h>
+
+class CMutex
 {
-  CBitVis bitvis(argc, argv);
+  public:
+    CMutex();
+    ~CMutex();
+    bool Lock();
+    void Unlock();
+    bool TryLock();
 
-  bitvis.Setup();
-  bitvis.Process();
-  bitvis.Cleanup();
+  protected:
+    pthread_mutex_t m_mutex;
+    int	            m_refcount;
+};
 
-  return 0;
-}
-
+#endif //CMUTEX

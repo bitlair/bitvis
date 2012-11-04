@@ -16,16 +16,31 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bitvis.h"
+#ifndef FFT_H
+#define FFT_H
 
-int main (int argc, char *argv[])
+#include <complex.h>
+#include <fftw3.h>
+
+class Cfft
 {
-  CBitVis bitvis(argc, argv);
+  public:
+    Cfft();
+    ~Cfft();
 
-  bitvis.Setup();
-  bitvis.Process();
-  bitvis.Cleanup();
+    void Allocate(unsigned int size);
+    void Free();
+    void ApplyWindow();
+    void AddSample(float sample);
+    
+    float*         m_inbuf;
+    float*         m_fftin;
+    float*         m_window;
+    fftwf_complex* m_outbuf;
+    unsigned int   m_bufsize;
+    fftwf_plan     m_plan;
 
-  return 0;
-}
+  private:
 
+};
+#endif //FFT_H
