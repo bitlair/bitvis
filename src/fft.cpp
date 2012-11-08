@@ -89,7 +89,7 @@ void Cfft::ApplyWindow()
   float* out = m_fftin;
 
   while (in != inend)
-    *(out++) = *(in++);// * *(window++);
+    *(out++) = *(in++) * *(window++);
 }
 
 void Cfft::AddSample(float sample)

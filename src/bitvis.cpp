@@ -202,12 +202,20 @@ void CBitVis::ProcessAudio()
     for (int i = 0; i < samples; i++)
     {
       m_fft.AddSample(m_buf[i]);
-
       m_samplecounter++;
-      if (m_samplecounter >= samplerate / 30)
-      {
-        m_samplecounter = 0;
 
+      if (m_samplecounter % 32 == 0)
+      {
+        m_fft.ApplyWindow();
+        fftwf_execute(m_fft.m_plan);
+
+        m_nrffts++;
+        for (int j = 0; j < bins; j++)
+          m_fftbuf[j] += cabsf(m_fft.m_outbuf[j]) / m_fft.m_bufsize;
+      }
+
+      if (m_samplecounter % (samplerate / 20) == 0)
+      {
         m_fft.ApplyWindow();
         fftwf_execute(m_fft.m_plan);
 
@@ -222,9 +230,9 @@ void CBitVis::ProcessAudio()
           int nrbins = Round32(next - start);
           float outval = 0.0f;
           for (int k = bin; k < bin + nrbins; k++)
-            outval += cabsf(m_fft.m_outbuf[k]) / m_fft.m_bufsize;
+            outval += m_fftbuf[k] / m_nrffts;
 
-          out += string(Clamp(Round32(outval * 100.0f), 1, 100), '|');
+          out += string(Clamp(Round32(outval * 300.0f), 1, 100), '|');
           out += '\n';
 
           start = next;
@@ -232,6 +240,9 @@ void CBitVis::ProcessAudio()
         }
         printf("start\n%send\n", out.c_str());
         fflush(stdout);
+
+        memset(m_fftbuf, 0, bins * sizeof(float));
+        m_nrffts = 0;
       }
     }
   }
