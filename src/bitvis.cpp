@@ -39,6 +39,7 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_buf = NULL;
   m_bufsize = 0;
   m_fftbuf = NULL;
+  m_displaybuf = NULL;
   m_samplecounter = 0;
   m_nrffts = 0;
 }
@@ -180,6 +181,7 @@ void CBitVis::ProcessAudio()
 {
   const int bins = 1024;
   const int lines = 46;
+  const float decay = 0.5;
   int samplerate;
   int samples;
   if ((samples = m_jackclient.GetAudio(m_buf, m_bufsize, samplerate)) > 0)
@@ -189,6 +191,12 @@ void CBitVis::ProcessAudio()
     {
       m_fftbuf = new float[bins];
       memset(m_fftbuf, 0, bins * sizeof(float));
+    }
+
+    if (!m_displaybuf)
+    {
+      m_displaybuf = new float[lines];
+      memset(m_displaybuf, 0, lines * sizeof(float));
     }
 
     int additions = 0;
@@ -214,7 +222,7 @@ void CBitVis::ProcessAudio()
           m_fftbuf[j] += cabsf(m_fft.m_outbuf[j]) / m_fft.m_bufsize;
       }
 
-      if (m_samplecounter % (samplerate / 20) == 0)
+      if (m_samplecounter % (samplerate / 30) == 0)
       {
         m_fft.ApplyWindow();
         fftwf_execute(m_fft.m_plan);
@@ -232,7 +240,8 @@ void CBitVis::ProcessAudio()
           for (int k = bin; k < bin + nrbins; k++)
             outval += m_fftbuf[k] / m_nrffts;
 
-          out += string(Clamp(Round32(outval * 300.0f), 1, 100), '|');
+          m_displaybuf[j] = m_displaybuf[j] * decay + outval * (1.0f - decay);
+          out += string(Clamp(Round32(m_displaybuf[j] * 300.0f), 1, 100), '|');
           out += '\n';
 
           start = next;

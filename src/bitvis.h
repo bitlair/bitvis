@@ -40,6 +40,7 @@ class CBitVis
     float*      m_buf;
     int         m_bufsize;
     float*      m_fftbuf;
+    float*      m_displaybuf;
     int         m_samplecounter;
     int         m_nrffts;
 
