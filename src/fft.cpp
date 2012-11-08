@@ -27,6 +27,7 @@
 Cfft::Cfft()
 {
   m_inbuf = NULL;
+  m_inbufpos = 0;
   m_fftin = NULL;
   m_outbuf = NULL;
   m_window = NULL;
@@ -69,6 +70,7 @@ void Cfft::Free()
   fftw_free(m_outbuf);
   delete[] m_window;
   m_inbuf = NULL;
+  m_inbufpos = 0;
   m_fftin = NULL;
   m_outbuf = NULL;
   m_window = NULL;
@@ -83,10 +85,16 @@ void Cfft::Free()
 
 void Cfft::ApplyWindow()
 {
-  float* in = m_inbuf;
+  float* in = m_inbuf + m_inbufpos;
   float* inend = m_inbuf + m_bufsize;
-  float* window = m_window;
   float* out = m_fftin;
+  float* window = m_window;
+
+  while (in != inend)
+    *(out++) = *(in++) * *(window++);
+
+  in = m_inbuf;
+  inend = m_inbuf + m_inbufpos;
 
   while (in != inend)
     *(out++) = *(in++) * *(window++);
@@ -94,7 +102,9 @@ void Cfft::ApplyWindow()
 
 void Cfft::AddSample(float sample)
 {
-  memmove(m_inbuf, m_inbuf + 1, (m_bufsize - 1) * sizeof(float));
-  m_inbuf[m_bufsize - 1] = sample;
+  m_inbuf[m_inbufpos] = sample;
+  m_inbufpos++;
+  if (m_inbufpos == m_bufsize)
+    m_inbufpos = 0;
 }
 

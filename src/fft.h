@@ -34,6 +34,7 @@ class Cfft
     void AddSample(float sample);
     
     float*         m_inbuf;
+    unsigned int   m_inbufpos;
     float*         m_fftin;
     float*         m_window;
     fftwf_complex* m_outbuf;
