@@ -205,7 +205,7 @@ void CBitVis::ProcessAudio()
 
     const int maxbin = Round32(15000.0f / samplerate * bins * 2.0f);
 
-    float increase = (float)(maxbin - lines) / additions;
+    float increase = (float)(maxbin - lines - 1) / additions;
 
     for (int i = 0; i < samples; i++)
     {
@@ -234,7 +234,7 @@ void CBitVis::ProcessAudio()
         {
           float next = start + add;
 
-          int bin    = Round32(start);
+          int bin    = Round32(start) + 1;
           int nrbins = Round32(next - start);
           float outval = 0.0f;
           for (int k = bin; k < bin + nrbins; k++)
