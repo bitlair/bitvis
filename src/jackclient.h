@@ -61,7 +61,6 @@ class CJackClient
     CCondition     m_condition;
     float*         m_buf;
     unsigned int   m_bufsize;
-    bool           m_bufupdated;
     SRC_STATE*     m_srcstate;
     int            m_outsamples;
 

@@ -48,7 +48,6 @@ CJackClient::CJackClient()
   m_outsamplerate = 40000;
   m_buf           = NULL;
   m_bufsize       = 0;
-  m_bufupdated    = false;
   m_srcstate      = NULL;
   m_outsamples    = 0;
 
@@ -167,10 +166,9 @@ void CJackClient::Disconnect()
   m_exitstatus = (jack_status_t)0;
   m_samplerate = 0;
 
-  delete[] m_buf;
+  free(m_buf);
   m_buf = NULL;
   m_bufsize = 0;
-  m_bufupdated = false;
 
   if (m_srcstate)
   {
@@ -234,13 +232,19 @@ int CJackClient::SJackProcessCallback(jack_nframes_t nframes, void *arg)
   return 0;
 }
 
+#define MAXBUFFER (1024 * 1024)
+
 void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
 {
-  if (m_bufsize < nframes)
+  unsigned int neededsize = m_outsamples + nframes;
+  if (neededsize > MAXBUFFER)
   {
-    delete[] m_buf;
-    m_buf = new float[nframes];
-    m_bufsize = nframes;
+    return;
+  }
+  else if (m_bufsize < neededsize)
+  {
+    m_bufsize = neededsize;
+    m_buf = (float*)realloc(m_buf, m_bufsize * sizeof(float));
   }
 
   CLock lock(m_condition);
@@ -249,15 +253,14 @@ void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
 
   SRC_DATA srcdata = {};
   srcdata.data_in = jackptr;
-  srcdata.data_out = m_buf;
+  srcdata.data_out = m_buf + m_outsamples;
   srcdata.input_frames = nframes;
   srcdata.output_frames = nframes;
   srcdata.src_ratio = (double)m_outsamplerate / m_samplerate;
 
   src_process(m_srcstate, &srcdata);
-  m_outsamples = srcdata.output_frames_gen;
+  m_outsamples += srcdata.output_frames_gen;
 
-  m_bufupdated = true;
   lock.Leave();
   m_condition.Signal();
 }
@@ -265,9 +268,9 @@ void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
 int CJackClient::GetAudio(float*& buf, int& bufsize, int& samplerate)
 {
   CLock lock(m_condition);
-  m_condition.Wait(1000000, m_bufupdated, false);
+  m_condition.Wait(1000000, m_outsamples, 0);
 
-  if (!m_bufupdated)
+  if (m_outsamples == 0)
     return 0;
 
   samplerate = m_outsamplerate;
@@ -280,9 +283,10 @@ int CJackClient::GetAudio(float*& buf, int& bufsize, int& samplerate)
 
   memcpy(buf, m_buf, m_outsamples * sizeof(float));
 
-  m_bufupdated = false;
+  int outsamples = m_outsamples;
+  m_outsamples = 0;
 
-  return m_outsamples;
+  return outsamples;
 }
 
 void CJackClient::SJackInfoShutdownCallback(jack_status_t code, const char *reason, void *arg)
