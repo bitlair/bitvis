@@ -50,6 +50,7 @@ CJackClient::CJackClient()
   m_bufsize       = 0;
   m_srcstate      = NULL;
   m_outsamples    = 0;
+  m_audiotime     = 0;
 
   if (pipe2(m_pipe, O_NONBLOCK) == -1)
   {
@@ -249,6 +250,9 @@ void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
 
   CLock lock(m_condition);
 
+  if (m_outsamples == 0)
+    m_audiotime = GetTimeUs();
+
   float* jackptr = (float*)jack_port_get_buffer(m_jackport, nframes);
 
   SRC_DATA srcdata = {};
@@ -265,7 +269,7 @@ void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
   m_condition.Signal();
 }
 
-int CJackClient::GetAudio(float*& buf, int& bufsize, int& samplerate)
+int CJackClient::GetAudio(float*& buf, int& bufsize, int& samplerate, int64_t& audiotime)
 {
   CLock lock(m_condition);
   m_condition.Wait(1000000, m_outsamples, 0);
@@ -285,6 +289,8 @@ int CJackClient::GetAudio(float*& buf, int& bufsize, int& samplerate)
 
   int outsamples = m_outsamples;
   m_outsamples = 0;
+
+  audiotime = m_audiotime;
 
   return outsamples;
 }

@@ -27,6 +27,7 @@
 #include "fft.h"
 #include "clientmessage.h"
 #include "util/condition.h"
+#include "util/inclstdint.h"
 
 class CJackClient
 {
@@ -44,7 +45,7 @@ class CJackClient
     const std::string& ExitReason() { return m_exitreason; }
 
     int                Samplerate() { return m_samplerate; }
-    int                GetAudio(float*& buf, int& bufsize, int& samplerate);
+    int                GetAudio(float*& buf, int& bufsize, int& samplerate, int64_t& audiotime);
 
   private:
     bool           m_connected;
@@ -63,6 +64,7 @@ class CJackClient
     unsigned int   m_bufsize;
     SRC_STATE*     m_srcstate;
     int            m_outsamples;
+    int64_t        m_audiotime;
 
     bool        ConnectInternal();
     void        CheckMessages();

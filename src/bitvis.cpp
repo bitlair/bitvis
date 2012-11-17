@@ -181,11 +181,12 @@ void CBitVis::ProcessSignalfd()
 void CBitVis::ProcessAudio()
 {
   const int bins = 1024;
-  const int lines = 46;
+  const int lines = 40;
   const float decay = 0.5;
   int samplerate;
   int samples;
-  if ((samples = m_jackclient.GetAudio(m_buf, m_bufsize, samplerate)) > 0)
+  int64_t audiotime;
+  if ((samples = m_jackclient.GetAudio(m_buf, m_bufsize, samplerate, audiotime)) > 0)
   {
     m_fft.Allocate(bins * 2);
     if (!m_fftbuf)
@@ -248,7 +249,14 @@ void CBitVis::ProcessAudio()
           start = next;
           add += increase;
         }
-        printf("start\n%send\n", out.c_str());
+
+        int64_t sleeptime = audiotime + Round64(1000000.0 / (double)samplerate * (double)i) - GetTimeUs();
+        USleep(sleeptime);
+        static int64_t prev;
+        int64_t now = GetTimeUs();
+        int64_t interval = now - prev;
+        prev = now;
+        printf("samples:%i\nsleeptime:%" PRIi64"\ninterval:%" PRIi64 "\nstart\n%send\n", samples, sleeptime, interval, out.c_str());
         fflush(stdout);
 
         memset(m_fftbuf, 0, bins * sizeof(float));
