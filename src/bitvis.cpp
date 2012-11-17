@@ -243,7 +243,7 @@ void CBitVis::ProcessAudio()
             outval += m_fftbuf[k] / m_nrffts;
 
           m_displaybuf[j] = m_displaybuf[j] * decay + outval * (1.0f - decay);
-          out += string(Clamp(Round32(m_displaybuf[j] * 5.0f * lines), 1, 100), '|');
+          out += string(Clamp(Round32((log10(m_displaybuf[j]) * 20.0f) + 30.0f) * 1.5f, 1, 48), '|');
           out += '\n';
 
           start = next;
