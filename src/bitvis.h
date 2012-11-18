@@ -45,11 +45,20 @@ class CBitVis
     int         m_samplecounter;
     int         m_nrffts;
 
+    struct peak
+    {
+      int64_t time;
+      float   value;
+    };
+
+    peak*       m_peakholds;
+
     CTcpClientSocket m_socket;
 
     void SetupSignals();
     void ProcessSignalfd();
     void ProcessAudio();
+    void SendData(int64_t time);
     static void JackError(const char* jackerror);
     static void JackInfo(const char* jackinfo);
 };

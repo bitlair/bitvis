@@ -31,7 +31,7 @@
 
 using namespace std;
 
-#define CONNECTINTERVAL 10000000
+#define CONNECTINTERVAL 1000000
 
 CBitVis::CBitVis(int argc, char *argv[])
 {
@@ -43,6 +43,7 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_displaybuf = NULL;
   m_samplecounter = 0;
   m_nrffts = 0;
+  m_peakholds = NULL;
 }
 
 CBitVis::~CBitVis()
@@ -115,7 +116,7 @@ void CBitVis::SetupSignals()
 
 void CBitVis::Process()
 {
-  int64_t lastconnect = GetTimeUs() - CONNECTINTERVAL;
+  int64_t lastconnect = GetTimeUs() - CONNECTINTERVAL - 1;
 
   while (!m_stop)
   {
@@ -140,10 +141,14 @@ void CBitVis::Process()
 
     if (!m_socket.IsOpen() && GetTimeUs() - lastconnect > CONNECTINTERVAL)
     {
-      if (m_socket.Open("192.168.88.117", 1337) == FAIL)
+      if (m_socket.Open("192.168.88.117", 1337, 60000000) == FAIL)
       {
         LogError("Failed to connect: %s", m_socket.GetError().c_str());
         m_socket.Close();
+      }
+      else
+      {
+        Log("Connected");
       }
       didconnect = true;
     }
@@ -196,7 +201,7 @@ void CBitVis::ProcessSignalfd()
 void CBitVis::ProcessAudio()
 {
   const int bins = 1024;
-  const int lines = 40;
+  const int lines = 120;
   const float decay = 0.5;
   int samplerate;
   int samples;
@@ -265,14 +270,16 @@ void CBitVis::ProcessAudio()
           add += increase;
         }
 
-        int64_t sleeptime = audiotime + Round64(1000000.0 / (double)samplerate * (double)i) - GetTimeUs();
-        USleep(sleeptime);
+        //int64_t sleeptime = audiotime + Round64(1000000.0 / (double)samplerate * (double)i) - GetTimeUs();
+        //SendData(sleeptime);
+        SendData(audiotime + Round64(1000000.0 / (double)samplerate * (double)i));
+        //USleep(sleeptime);
         static int64_t prev;
         int64_t now = GetTimeUs();
         int64_t interval = now - prev;
         prev = now;
-        printf("samples:%i\nsleeptime:%" PRIi64"\ninterval:%" PRIi64 "\nstart\n%send\n", samples, sleeptime, interval, out.c_str());
-        fflush(stdout);
+        //printf("samples:%i\nsleeptime:%" PRIi64"\ninterval:%" PRIi64 "\nstart\n%send\n", samples, sleeptime, interval, out.c_str());
+        //fflush(stdout);
 
         memset(m_fftbuf, 0, bins * sizeof(float));
         m_nrffts = 0;
@@ -284,6 +291,71 @@ void CBitVis::ProcessAudio()
 void CBitVis::Cleanup()
 {
   m_jackclient.Disconnect();
+}
+
+void CBitVis::SendData(int64_t time)
+{
+  if (!m_socket.IsOpen())
+    return;
+
+  CTcpData data;
+  data.SetData(":00");
+
+  const int lines = 48;
+  const int columns = 120;
+
+  if (!m_peakholds)
+  {
+    m_peakholds = new peak[columns];
+    memset(m_peakholds, 0, columns * sizeof(peak));
+  }
+
+  for (int y = lines - 1; y >= 0; y--)
+  {
+    uint8_t line[columns / 4];
+    for (int x = 0; x < columns / 4; x++)
+    {
+      uint8_t pixel = 0;
+      for (int i = 0; i < 4; i++)
+      {
+        pixel <<= 2;
+        int value = Round32((log10(m_displaybuf[x * 4 + i]) * 20.0f) + 55.0f) * 1.0f;
+        if (value > y)
+          pixel |= 1;
+
+        peak& currpeak = m_peakholds[x * 4 + i];
+        if (value >= Round32(currpeak.value))
+        {
+          currpeak.value = value;
+          currpeak.time = time;
+        }
+
+        if (Round32(currpeak.value) == y)
+          pixel |= 2;
+
+        if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
+          currpeak.value -= 0.01f;
+      }
+      line[x] = pixel;
+    }
+    data.SetData(line, sizeof(line), true);
+  }
+
+  uint8_t end[10];
+  memset(end, 0, sizeof(end));
+  data.SetData(end, sizeof(end), true);
+
+  USleep(time - GetTimeUs());
+
+  if (m_socket.Write(data) == FAIL)
+  {
+    LogError("%s", m_socket.GetError().c_str());
+    m_socket.Close();
+  }
+  else
+  {
+    Log("Data written");
+  }
 }
 
 void CBitVis::JackError(const char* jackerror)
