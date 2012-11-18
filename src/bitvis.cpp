@@ -334,7 +334,11 @@ void CBitVis::SendData(int64_t time)
           pixel |= 2;
 
         if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
-          currpeak.value -= 0.01f;
+        {
+          currpeak.value += 0.01f;
+          if (currpeak.value >= lines)
+            currpeak.value = 0.0f;
+        }
       }
       line[x] = pixel;
     }
