@@ -119,6 +119,8 @@ void CBitVis::Process()
 
   while (!m_stop)
   {
+    bool didconnect = false;
+
     if (m_jackclient.ExitStatus())
     {
       LogError("Jack client exited with code %i reason: \"%s\"",
@@ -129,12 +131,25 @@ void CBitVis::Process()
     if (!m_jackclient.IsConnected() && GetTimeUs() - lastconnect > CONNECTINTERVAL)
     {
       m_jackclient.Connect();
-      lastconnect = GetTimeUs();
+      didconnect = true;
     }
 
     uint8_t msg;
     while ((msg = m_jackclient.GetMessage()) != MsgNone)
       LogDebug("got message %s from jack client", MsgToString(msg));
+
+    if (!m_socket.IsOpen() && GetTimeUs() - lastconnect > CONNECTINTERVAL)
+    {
+      if (m_socket.Open("192.168.88.117", 1337) == FAIL)
+      {
+        LogError("Failed to connect: %s", m_socket.GetError().c_str());
+        m_socket.Close();
+      }
+      didconnect = true;
+    }
+
+    if (didconnect)
+      lastconnect = GetTimeUs();
 
     if (m_jackclient.IsConnected())
     {

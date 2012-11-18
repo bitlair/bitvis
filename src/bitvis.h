@@ -21,6 +21,7 @@
 
 #include "jackclient.h"
 #include "fft.h"
+#include "util/tcpsocket.h"
 
 class CBitVis
 {
@@ -43,6 +44,8 @@ class CBitVis
     float*      m_displaybuf;
     int         m_samplecounter;
     int         m_nrffts;
+
+    CTcpClientSocket m_socket;
 
     void SetupSignals();
     void ProcessSignalfd();
