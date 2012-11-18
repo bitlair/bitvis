@@ -208,6 +208,9 @@ void CBitVis::ProcessAudio()
   int64_t audiotime;
   if ((samples = m_jackclient.GetAudio(m_buf, m_bufsize, samplerate, audiotime)) > 0)
   {
+    if (!m_socket.IsOpen())
+      return;
+
     m_fft.Allocate(bins * 2);
     if (!m_fftbuf)
     {
@@ -249,7 +252,7 @@ void CBitVis::ProcessAudio()
         m_fft.ApplyWindow();
         fftwf_execute(m_fft.m_plan);
 
-        string out;
+        //string out;
         float start = 0.0f;
         float add = 1.0f;
         for (int j = 0; j < lines; j++)
@@ -263,8 +266,8 @@ void CBitVis::ProcessAudio()
             outval += m_fftbuf[k] / m_nrffts;
 
           m_displaybuf[j] = m_displaybuf[j] * decay + outval * (1.0f - decay);
-          out += string(Clamp(Round32((log10(m_displaybuf[j]) * 20.0f) + 30.0f) * 1.5f, 1, 48), '|');
-          out += '\n';
+          //out += string(Clamp(Round32((log10(m_displaybuf[j]) * 20.0f) + 30.0f) * 1.5f, 1, 48), '|');
+          //out += '\n';
 
           start = next;
           add += increase;
@@ -274,10 +277,10 @@ void CBitVis::ProcessAudio()
         //SendData(sleeptime);
         SendData(audiotime + Round64(1000000.0 / (double)samplerate * (double)i));
         //USleep(sleeptime);
-        static int64_t prev;
+        /*static int64_t prev;
         int64_t now = GetTimeUs();
         int64_t interval = now - prev;
-        prev = now;
+        prev = now;*/
         //printf("samples:%i\nsleeptime:%" PRIi64"\ninterval:%" PRIi64 "\nstart\n%send\n", samples, sleeptime, interval, out.c_str());
         //fflush(stdout);
 
@@ -295,9 +298,6 @@ void CBitVis::Cleanup()
 
 void CBitVis::SendData(int64_t time)
 {
-  if (!m_socket.IsOpen())
-    return;
-
   CTcpData data;
   data.SetData(":00");
 
