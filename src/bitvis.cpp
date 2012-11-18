@@ -352,10 +352,6 @@ void CBitVis::SendData(int64_t time)
     LogError("%s", m_socket.GetError().c_str());
     m_socket.Close();
   }
-  else
-  {
-    Log("Data written");
-  }
 }
 
 void CBitVis::JackError(const char* jackerror)
