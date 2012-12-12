@@ -47,6 +47,7 @@ class CBitVis
     int         m_nrbins;
     int         m_nrcolumns;
     int         m_nrlines;
+    float       m_decay;
 
     struct peak
     {

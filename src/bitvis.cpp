@@ -47,6 +47,7 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_nrbins = 1024;
   m_nrcolumns = 120;
   m_nrlines = 48;
+  m_decay = 0.5;
 }
 
 CBitVis::~CBitVis()
@@ -210,7 +211,6 @@ void CBitVis::ProcessSignalfd()
 
 void CBitVis::ProcessAudio()
 {
-  const float decay = 0.5;
   int samplerate;
   int samples;
   int64_t audiotime;
@@ -247,7 +247,6 @@ void CBitVis::ProcessAudio()
         m_fft.ApplyWindow();
         fftwf_execute(m_fft.m_plan);
 
-        //string out;
         float start = 0.0f;
         float add = 1.0f;
         for (int j = 0; j < m_nrcolumns; j++)
@@ -260,24 +259,13 @@ void CBitVis::ProcessAudio()
           for (int k = bin; k < bin + nrbins; k++)
             outval += m_fftbuf[k] / m_nrffts;
 
-          m_displaybuf[j] = m_displaybuf[j] * decay + outval * (1.0f - decay);
-          //out += string(Clamp(Round32((log10(m_displaybuf[j]) * 20.0f) + 30.0f) * 1.5f, 1, 48), '|');
-          //out += '\n';
+          m_displaybuf[j] = m_displaybuf[j] * m_decay + outval * (1.0f - m_decay);
 
           start = next;
           add += increase;
         }
 
-        //int64_t sleeptime = audiotime + Round64(1000000.0 / (double)samplerate * (double)i) - GetTimeUs();
-        //SendData(sleeptime);
         SendData(audiotime + Round64(1000000.0 / (double)samplerate * (double)i));
-        //USleep(sleeptime);
-        /*static int64_t prev;
-        int64_t now = GetTimeUs();
-        int64_t interval = now - prev;
-        prev = now;*/
-        //printf("samples:%i\nsleeptime:%" PRIi64"\ninterval:%" PRIi64 "\nstart\n%send\n", samples, sleeptime, interval, out.c_str());
-        //fflush(stdout);
 
         memset(m_fftbuf, 0, m_nrbins * sizeof(float));
         m_nrffts = 0;
