@@ -48,6 +48,7 @@ class CBitVis
     int         m_nrcolumns;
     int         m_nrlines;
     float       m_decay;
+    int         m_fontheight;
 
     struct peak
     {
@@ -63,6 +64,9 @@ class CBitVis
     void ProcessSignalfd();
     void ProcessAudio();
     void SendData(int64_t time);
+    void AddText(uint8_t* buff, const char* str);
+    const unsigned int* GetChar(char in);
+    int CharHeight(const unsigned int* in);
     static void JackError(const char* jackerror);
     static void JackInfo(const char* jackinfo);
 };
