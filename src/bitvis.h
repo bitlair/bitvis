@@ -44,6 +44,9 @@ class CBitVis
     float*      m_displaybuf;
     int         m_samplecounter;
     int         m_nrffts;
+    int         m_nrbins;
+    int         m_nrcolumns;
+    int         m_nrlines;
 
     struct peak
     {

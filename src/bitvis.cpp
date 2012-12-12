@@ -44,6 +44,9 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_samplecounter = 0;
   m_nrffts = 0;
   m_peakholds = NULL;
+  m_nrbins = 1024;
+  m_nrcolumns = 120;
+  m_nrlines = 48;
 }
 
 CBitVis::~CBitVis()
@@ -59,6 +62,17 @@ void CBitVis::Setup()
 
   jack_set_error_function(JackError);
   jack_set_info_function(JackInfo);
+
+  m_fft.Allocate(m_nrbins * 2);
+
+  m_fftbuf = new float[m_nrbins];
+  memset(m_fftbuf, 0, m_nrbins * sizeof(float));
+
+  m_displaybuf = new float[m_nrcolumns];
+  memset(m_displaybuf, 0, m_nrcolumns * sizeof(float));
+
+  m_peakholds = new peak[m_nrcolumns];
+  memset(m_peakholds, 0, m_nrcolumns * sizeof(peak));
 }
 
 void CBitVis::SetupSignals()
@@ -196,8 +210,6 @@ void CBitVis::ProcessSignalfd()
 
 void CBitVis::ProcessAudio()
 {
-  const int bins = 1024;
-  const int lines = 120;
   const float decay = 0.5;
   int samplerate;
   int samples;
@@ -207,26 +219,13 @@ void CBitVis::ProcessAudio()
     if (!m_socket.IsOpen())
       return;
 
-    m_fft.Allocate(bins * 2);
-    if (!m_fftbuf)
-    {
-      m_fftbuf = new float[bins];
-      memset(m_fftbuf, 0, bins * sizeof(float));
-    }
-
-    if (!m_displaybuf)
-    {
-      m_displaybuf = new float[lines];
-      memset(m_displaybuf, 0, lines * sizeof(float));
-    }
-
     int additions = 0;
-    for (int i = 1; i < lines; i++)
+    for (int i = 1; i < m_nrcolumns; i++)
       additions += i;
 
-    const int maxbin = Round32(15000.0f / samplerate * bins * 2.0f);
+    const int maxbin = Round32(15000.0f / samplerate * m_nrbins * 2.0f);
 
-    float increase = (float)(maxbin - lines - 1) / additions;
+    float increase = (float)(maxbin - m_nrcolumns - 1) / additions;
 
     for (int i = 0; i < samples; i++)
     {
@@ -239,7 +238,7 @@ void CBitVis::ProcessAudio()
         fftwf_execute(m_fft.m_plan);
 
         m_nrffts++;
-        for (int j = 0; j < bins; j++)
+        for (int j = 0; j < m_nrbins; j++)
           m_fftbuf[j] += cabsf(m_fft.m_outbuf[j]) / m_fft.m_bufsize;
       }
 
@@ -251,7 +250,7 @@ void CBitVis::ProcessAudio()
         //string out;
         float start = 0.0f;
         float add = 1.0f;
-        for (int j = 0; j < lines; j++)
+        for (int j = 0; j < m_nrcolumns; j++)
         {
           float next = start + add;
 
@@ -280,7 +279,7 @@ void CBitVis::ProcessAudio()
         //printf("samples:%i\nsleeptime:%" PRIi64"\ninterval:%" PRIi64 "\nstart\n%send\n", samples, sleeptime, interval, out.c_str());
         //fflush(stdout);
 
-        memset(m_fftbuf, 0, bins * sizeof(float));
+        memset(m_fftbuf, 0, m_nrbins * sizeof(float));
         m_nrffts = 0;
       }
     }
@@ -297,19 +296,10 @@ void CBitVis::SendData(int64_t time)
   CTcpData data;
   data.SetData(":00");
 
-  const int lines = 48;
-  const int columns = 120;
-
-  if (!m_peakholds)
+  for (int y = m_nrlines - 1; y >= 0; y--)
   {
-    m_peakholds = new peak[columns];
-    memset(m_peakholds, 0, columns * sizeof(peak));
-  }
-
-  for (int y = lines - 1; y >= 0; y--)
-  {
-    uint8_t line[columns / 4];
-    for (int x = 0; x < columns / 4; x++)
+    uint8_t line[m_nrcolumns / 4];
+    for (int x = 0; x < m_nrcolumns / 4; x++)
     {
       uint8_t pixel = 0;
       for (int i = 0; i < 4; i++)
@@ -332,7 +322,7 @@ void CBitVis::SendData(int64_t time)
         if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
         {
           currpeak.value += 0.01f;
-          if (currpeak.value >= lines)
+          if (currpeak.value >= m_nrlines)
             currpeak.value = 0.0f;
         }
       }
