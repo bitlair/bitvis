@@ -157,13 +157,9 @@ void CBitVis::Process()
       lastconnect = GetTimeUs();
 
     if (m_jackclient.IsConnected())
-    {
       ProcessAudio();
-    }
     else
-    {
       sleep(1);
-    }
 
     ProcessSignalfd();
   }
