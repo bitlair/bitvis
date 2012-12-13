@@ -307,7 +307,7 @@ void CBitVis::SendData(int64_t time)
       for (int i = 0; i < 4; i++)
       {
         pixel <<= 2;
-        int value = Round32((log10(m_displaybuf[x * 4 + i]) * 20.0f) + 55.0f) * 1.0f;
+        int value = Round32(((log10(m_displaybuf[x * 4 + i]) * 20.0f) + 55.0f) / 48.0f * m_nrlines);
         if (value > y)
           pixel |= 1;
 
