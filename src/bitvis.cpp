@@ -334,7 +334,11 @@ void CBitVis::SendData(int64_t time)
   //add an empty line
   data.SetData(text, m_nrcolumns / 4, true);
 
-  SetText(text, m_mpdclient->CurrentSong().c_str());
+  string currentsong;
+  if (m_mpdclient->CurrentSong(currentsong))
+    m_scrolloffset = m_nrcolumns;
+
+  SetText(text, currentsong.c_str());
   data.SetData(text, sizeof(text), true);
 
   uint8_t end[10];

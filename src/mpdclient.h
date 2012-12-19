@@ -15,7 +15,7 @@ class CMpdClient : public CThread
     ~CMpdClient();
 
     virtual void Process();
-    std::string  CurrentSong();
+    bool CurrentSong(std::string& song);
 
   private:
     bool         OpenSocket();
@@ -26,6 +26,7 @@ class CMpdClient : public CThread
     CTcpClientSocket m_socket;
     CCondition       m_condition;
     std::string      m_currentsong;
+    bool             m_songchanged;
 };
 
 

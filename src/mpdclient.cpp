@@ -105,7 +105,13 @@ bool CMpdClient::GetCurrentSong()
 
       if (!artist.empty() && !title.empty())
       {
-        m_currentsong = artist + " - " + title;
+        string song = artist + " - " + title;
+        CLock lock(m_condition);
+        if (song != m_currentsong)
+        {
+          m_currentsong = song;
+          m_songchanged = true;
+        }
         return true;
       }
     }
@@ -114,9 +120,12 @@ bool CMpdClient::GetCurrentSong()
   return false;
 }
 
-std::string CMpdClient::CurrentSong()
+bool CMpdClient::CurrentSong(std::string& song)
 {
   CLock lock(m_condition);
-  return m_currentsong;
+  song = m_currentsong;
+  bool songchanged = m_songchanged;
+  m_songchanged = false;
+  return songchanged;
 }
 
