@@ -42,6 +42,7 @@ def build(bld):
                       src/util/timeutils.cpp\
                       src/util/condition.cpp\
                       src/util/tcpsocket.cpp\
+                      src/util/thread.cpp\
                       src/fft.cpp',
               use=['m','pthread','rt', 'jack', 'fftw3', 'fftw3f', 'samplerate'],
               includes='./src',
