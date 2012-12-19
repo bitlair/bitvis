@@ -36,6 +36,7 @@ def build(bld):
   bld.program(source='src/main.cpp\
                       src/bitvis.cpp\
                       src/jackclient.cpp\
+                      src/mpdclient.cpp\
                       src/util/log.cpp\
                       src/util/misc.cpp\
                       src/util/mutex.cpp\
