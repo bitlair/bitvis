@@ -25,6 +25,7 @@
 #include "jackclient.h"
 #include "fft.h"
 #include "util/tcpsocket.h"
+#include "mpdclient.h"
 
 class CBitVis
 {
@@ -53,6 +54,7 @@ class CBitVis
     float       m_decay;
     int         m_fontheight;
     int         m_scrolloffset;
+    CMpdClient* m_mpdclient;
 
     struct peak
     {

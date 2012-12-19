@@ -54,6 +54,9 @@ CBitVis::CBitVis(int argc, char *argv[])
 
   m_nrlines = 48 - m_fontheight - 1;
   m_scrolloffset = 0;
+
+  m_mpdclient = new CMpdClient("music.bitlair", 6600);
+  m_mpdclient->StartThread();
 }
 
 CBitVis::~CBitVis()
@@ -331,7 +334,7 @@ void CBitVis::SendData(int64_t time)
   //add an empty line
   data.SetData(text, m_nrcolumns / 4, true);
 
-  SetText(text, "Wat? No money? Hier! Suck a cock!");
+  SetText(text, m_mpdclient->CurrentSong().c_str());
   data.SetData(text, sizeof(text), true);
 
   uint8_t end[10];

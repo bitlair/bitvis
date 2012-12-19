@@ -27,35 +27,18 @@ void CMpdClient::Process()
     {
       if (!OpenSocket())
       {
-        CLock lock(m_condition);
-        m_commands.clear();
+        m_currentsong.clear();
         continue;
       }
     }
 
-    CLock lock(m_condition);
-    if (m_commands.empty())
+    if (!GetCurrentSong())
     {
-      if (!m_condition.Wait(10000000))
-      {
-        lock.Leave();
-        if (!Ping())
-        {
-          m_socket.Close();
-          lock.Enter();
-          m_commands.clear();
-          continue;
-        }
-      }
-    }
-    lock.Leave();
-
-    if (!ProcessCommands())
-    {
+      m_currentsong.clear();
       m_socket.Close();
-      lock.Enter();
-      m_commands.clear();
     }
+
+    USleep(1000000);
   }
 }
 
@@ -81,72 +64,18 @@ bool CMpdClient::OpenSocket()
   }
 }
 
-bool CMpdClient::ProcessCommands()
-{
-  CLock lock(m_condition);
-  while (!m_commands.empty())
-  {
-    ECMD cmd = m_commands.front();
-    m_commands.pop_front();
-    lock.Leave();
-
-    int volume;
-    if (!GetVolume(volume))
-      return false;
-
-    int newvolume = volume;
-    if (cmd == CMD_VOLUP)
-      newvolume += 5;
-    else if (cmd == CMD_VOLDOWN)
-      newvolume -= 5;
-
-    newvolume = Clamp(newvolume, 0, 100);
-    printf("Setting volume from %i to %i\n", volume, newvolume);
-
-    if (!SetVolume(newvolume))
-      return false;
-
-    lock.Enter();
-  }
-
-  return true;
-}
-
-bool CMpdClient::Ping()
+bool CMpdClient::GetCurrentSong()
 {
   CTcpData data;
-  data.SetData("ping\n");
-
+  data.SetData("currentsong\n");
   if (m_socket.Write(data) != SUCCESS)
   {
     printf("Error writing socket: %s\n", m_socket.GetError().c_str());
     return false;
   }
 
-  m_socket.SetTimeout(0);
-  int returnv;
-  while((returnv = m_socket.Read(data)) == SUCCESS);
-
-  m_socket.SetTimeout(10000000);
-
-  if (returnv == FAIL)
-  {
-    printf("Error reading socket: %s\n", m_socket.GetError().c_str());
-    return false;
-  }
-
-  return true;
-}
-
-bool CMpdClient::GetVolume(int& volume)
-{
-  CTcpData data;
-  data.SetData("status\n");
-  if (m_socket.Write(data) != SUCCESS)
-  {
-    printf("Error writing socket: %s\n", m_socket.GetError().c_str());
-    return false;
-  }
+  string artist;
+  string title;
 
   data.Clear();
   while(1)
@@ -166,10 +95,18 @@ bool CMpdClient::GetVolume(int& volume)
         break;
 
       string word;
-      if (GetWord(line, word) && word == "volume:")
+      if (GetWord(line, word))
       {
-        if (GetWord(line, word) && StrToInt(word, volume) && volume >= 0 && volume <= 100)
-          return true;
+        if (word == "Artist:")
+          artist = line.substr(1);
+        else if (word == "Title:")
+          title = line.substr(1);
+      }
+
+      if (!artist.empty() && !title.empty())
+      {
+        m_currentsong = artist + " - " + title;
+        return true;
       }
     }
   }
@@ -177,31 +114,9 @@ bool CMpdClient::GetVolume(int& volume)
   return false;
 }
 
-bool CMpdClient::SetVolume(int volume)
-{
-  CTcpData data;
-  data.SetData(string("setvol ") + ToString(volume) + "\n");
-
-  if (m_socket.Write(data) != SUCCESS)
-  {
-    printf("Error writing socket: %s\n", m_socket.GetError().c_str());
-    return false;
-  }
-
-  return true;
-}
-
-void CMpdClient::VolumeUp()
+std::string CMpdClient::CurrentSong()
 {
   CLock lock(m_condition);
-  m_commands.push_back(CMD_VOLUP);
-  m_condition.Signal();
-}
-
-void CMpdClient::VolumeDown()
-{
-  CLock lock(m_condition);
-  m_commands.push_back(CMD_VOLDOWN);
-  m_condition.Signal();
+  return m_currentsong;
 }
 

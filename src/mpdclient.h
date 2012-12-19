@@ -8,12 +8,6 @@
 #include "util/condition.h"
 #include "util/tcpsocket.h"
 
-enum ECMD
-{
-  CMD_VOLUP,
-  CMD_VOLDOWN
-};
-
 class CMpdClient : public CThread
 {
   public:
@@ -21,21 +15,17 @@ class CMpdClient : public CThread
     ~CMpdClient();
 
     virtual void Process();
-    void         VolumeUp();
-    void         VolumeDown();
+    std::string  CurrentSong();
 
   private:
     bool         OpenSocket();
-    bool         Ping();
-    bool         ProcessCommands();
-    bool         GetVolume(int& volume);
-    bool         SetVolume(int volume);
+    bool         GetCurrentSong();
 
     int              m_port;
     std::string      m_address;
     CTcpClientSocket m_socket;
-    std::deque<ECMD> m_commands;
     CCondition       m_condition;
+    std::string      m_currentsong;
 };
 
 
