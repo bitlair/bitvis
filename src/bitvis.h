@@ -19,6 +19,9 @@
 #ifndef BITVIS_H
 #define BITVIS_H
 
+#include <map>
+#include <vector>
+
 #include "jackclient.h"
 #include "fft.h"
 #include "util/tcpsocket.h"
@@ -49,6 +52,7 @@ class CBitVis
     int         m_nrlines;
     float       m_decay;
     int         m_fontheight;
+    int         m_scrolloffset;
 
     struct peak
     {
@@ -60,13 +64,15 @@ class CBitVis
 
     CTcpClientSocket m_socket;
 
+    std::map<char, std::vector<unsigned int> > m_glyphs;
+
     void SetupSignals();
     void ProcessSignalfd();
     void ProcessAudio();
     void SendData(int64_t time);
-    void AddText(uint8_t* buff, const char* str);
-    const unsigned int* GetChar(char in);
+    void SetText(uint8_t* buff, const char* str, int offset = 0);
     int CharHeight(const unsigned int* in);
+    void InitChars();
     static void JackError(const char* jackerror);
     static void JackInfo(const char* jackinfo);
 };
