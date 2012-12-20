@@ -27,14 +27,14 @@ void CMpdClient::Process()
     {
       if (!OpenSocket())
       {
-        m_currentsong.clear();
+        ClearCurrentSong();
         continue;
       }
     }
 
     if (!GetCurrentSong())
     {
-      m_currentsong.clear();
+      ClearCurrentSong();
       m_socket.Close();
     }
 
@@ -118,6 +118,16 @@ bool CMpdClient::GetCurrentSong()
   }
 
   return false;
+}
+
+void CMpdClient::ClearCurrentSong()
+{
+  CLock lock(m_condition);
+  if (!m_currentsong.empty())
+  {
+    m_currentsong.clear();
+    m_songchanged = true;
+  }
 }
 
 bool CMpdClient::CurrentSong(std::string& song)
