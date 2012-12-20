@@ -410,7 +410,7 @@ void CBitVis::InitChars()
   {\
     const unsigned int* pixarr = pixels;\
     std::vector<unsigned int> pixelvec;\
-    int charheight = CharHeight(pixarr);\
+    int charheight = CharHeight(pixarr, sizeof(pixels));\
     if (m_fontheight < charheight)\
       m_fontheight = charheight;\
     for (size_t i = 0; i < sizeof(pixels) / sizeof(pixels[0]); i++)\
@@ -517,10 +517,10 @@ void CBitVis::InitChars()
   GLYPH(' ',  ((const unsigned int[]){0x0, 0x0, 0x0}))
 }
 
-int CBitVis::CharHeight(const unsigned int* in)
+int CBitVis::CharHeight(const unsigned int* in, size_t size)
 {
   int highest = 0;
-  for (int i = 0; i < 8; i++)
+  for (size_t i = 0; i < size; i++)
   {
     for (int j = 0; j < 32; j++)
     {

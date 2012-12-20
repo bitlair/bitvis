@@ -73,7 +73,7 @@ class CBitVis
     void ProcessAudio();
     void SendData(int64_t time);
     void SetText(uint8_t* buff, const char* str, int offset = 0);
-    int CharHeight(const unsigned int* in);
+    int CharHeight(const unsigned int* in, size_t size);
     void InitChars();
     static void JackError(const char* jackerror);
     static void JackInfo(const char* jackinfo);
