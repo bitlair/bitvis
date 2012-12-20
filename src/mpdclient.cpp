@@ -68,7 +68,7 @@ bool CMpdClient::OpenSocket()
 bool CMpdClient::GetCurrentSong()
 {
   CTcpData data;
-  data.SetData("currentsong");
+  data.SetData("currentsong\n");
   if (m_socket.Write(data) != SUCCESS)
   {
     LogError("Writing socket: %s", m_socket.GetError().c_str());
