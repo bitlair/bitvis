@@ -6,6 +6,7 @@
 #include "util/timeutils.h"
 #include "util/lock.h"
 #include "util/misc.h"
+#include "util/log.h"
 
 using namespace std;
 
@@ -49,7 +50,7 @@ bool CMpdClient::OpenSocket()
 
   if (returnv != SUCCESS)
   {
-    printf("Error connecting to %s:%i, %s\n", m_address.c_str(), m_port, m_socket.GetError().c_str());
+    LogError("Connecting to %s:%i, %s", m_address.c_str(), m_port, m_socket.GetError().c_str());
     m_socket.Close();
 
     if (returnv != TIMEOUT)
@@ -59,7 +60,7 @@ bool CMpdClient::OpenSocket()
   }
   else
   {
-    printf("Connected to %s:%i\n", m_address.c_str(), m_port);
+    Log("Connected to %s:%i", m_address.c_str(), m_port);
     return true;
   }
 }
@@ -67,10 +68,10 @@ bool CMpdClient::OpenSocket()
 bool CMpdClient::GetCurrentSong()
 {
   CTcpData data;
-  data.SetData("currentsong\n");
+  data.SetData("currentsong");
   if (m_socket.Write(data) != SUCCESS)
   {
-    printf("Error writing socket: %s\n", m_socket.GetError().c_str());
+    LogError("Writing socket: %s", m_socket.GetError().c_str());
     return false;
   }
 
@@ -82,7 +83,7 @@ bool CMpdClient::GetCurrentSong()
   {
     if (m_socket.Read(data) != SUCCESS)
     {
-      printf("Error reading socket: %s\n", m_socket.GetError().c_str());
+      LogError("Reading socket: %s", m_socket.GetError().c_str());
       return false;
     }
 
@@ -111,6 +112,8 @@ bool CMpdClient::GetCurrentSong()
         {
           m_currentsong = song;
           m_songchanged = true;
+          lock.Leave();
+          Log("Song changed to \"%s\"", m_currentsong.c_str());
         }
         return true;
       }
