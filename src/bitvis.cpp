@@ -402,11 +402,12 @@ void CBitVis::InitChars()
 #define GLYPH(index, pixels)\
   {\
     const unsigned int* pixarr = pixels;\
+    size_t nrcolumns = sizeof(pixels) / sizeof(pixels[0]);\
     std::vector<unsigned int> pixelvec;\
-    int charheight = CharHeight(pixarr, sizeof(pixels));\
+    int charheight = CharHeight(pixarr, nrcolumns);\
     if (m_fontheight < charheight)\
       m_fontheight = charheight;\
-    for (size_t i = 0; i < sizeof(pixels) / sizeof(pixels[0]); i++)\
+    for (size_t i = 0; i < nrcolumns; i++)\
       pixelvec.push_back(pixarr[i]);\
     \
     m_glyphs[index].swap(pixelvec);\
