@@ -383,25 +383,6 @@ void CBitVis::SetText(uint8_t* buff, const char* str, int offset /*= 0*/)
   m_scrolloffset--;
   if (m_scrolloffset < -pixlength)
     m_scrolloffset = m_nrcolumns;
-
-  /*for (int currchar = 0; currchar < length; currchar++)
-  {
-    const unsigned int* dchar = GetChar(str[currchar]);
-    if (dchar)
-    {
-      for (int i = 0; i < m_fontheight; i++)
-      {
-        for (int j = 0; j < 4; j++)
-        {
-          if (dchar[3 - j] & (1 << (m_fontheight - i - 1)))
-            buff[m_nrcolumns / 4 * i + currchar * 2] |= 1 << (j * 2);
-
-          if (dchar[7 - j] & (1 << (m_fontheight - i - 1)))
-            buff[m_nrcolumns / 4 * i + 1 + currchar * 2] |= 1 << (j * 2);
-        }
-      }
-    }
-  }*/
 }
 
 void CBitVis::InitChars()
@@ -414,9 +395,8 @@ void CBitVis::InitChars()
     if (m_fontheight < charheight)\
       m_fontheight = charheight;\
     for (size_t i = 0; i < sizeof(pixels) / sizeof(pixels[0]); i++)\
-    {\
       pixelvec.push_back(pixarr[i]);\
-    }\
+    \
     m_glyphs[index].swap(pixelvec);\
   }\
 
