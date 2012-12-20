@@ -366,25 +366,29 @@ void CBitVis::SetText(uint8_t* buff, const char* str, int offset /*= 0*/)
   int pixlength = 0;
   for (int i = 0; i < length; i++)
   {
-    vector<unsigned int>& dchar = m_glyphs[str[i]];
-    for (size_t j = 0; j < dchar.size(); j++)
+    map<char, vector<unsigned int> >::iterator it = m_glyphs.find(str[i]);
+    vector<unsigned int>& dchar = it->second;
+    if (it != m_glyphs.end())
     {
-      if (charpos >= 0 && charpos < m_nrcolumns)
+      for (size_t j = 0; j < dchar.size(); j++)
       {
-        for (int k = 0; k < m_fontheight; k++)
+        if (charpos >= 0 && charpos < m_nrcolumns)
         {
-          int bit = (dchar[j] >> k) & 1;
-          buff[charpos / 4 + m_nrcolumns / 4 * (m_fontheight - k - 1)] |= bit << (6 - ((charpos % 4) * 2));
+          for (int k = 0; k < m_fontheight; k++)
+          {
+            int bit = (dchar[j] >> k) & 1;
+            buff[charpos / 4 + m_nrcolumns / 4 * (m_fontheight - k - 1)] |= bit << (6 - ((charpos % 4) * 2));
+          }
         }
+        charpos++;
+        pixlength++;
       }
-      charpos++;
-      pixlength++;
-    }
 
-    if (i < length - 1)
-    {
-      charpos++;
-      pixlength++;
+      if (i < length - 1)
+      {
+        charpos++;
+        pixlength++;
+      }
     }
   }
 
