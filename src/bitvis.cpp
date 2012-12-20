@@ -254,9 +254,6 @@ void CBitVis::ProcessAudio()
 
       if (m_samplecounter % (samplerate / 30) == 0)
       {
-        m_fft.ApplyWindow();
-        fftwf_execute(m_fft.m_plan);
-
         float start = 0.0f;
         float add = 1.0f;
         for (int j = 0; j < m_nrcolumns; j++)
