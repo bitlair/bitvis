@@ -54,6 +54,7 @@ class CBitVis
     float       m_decay;
     int         m_fontheight;
     int         m_scrolloffset;
+    int64_t     m_songupdatetime;
     CMpdClient* m_mpdclient;
 
     struct peak

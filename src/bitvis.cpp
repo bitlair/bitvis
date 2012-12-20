@@ -54,6 +54,7 @@ CBitVis::CBitVis(int argc, char *argv[])
 
   m_nrlines = 48 - m_fontheight - 1;
   m_scrolloffset = 0;
+  m_songupdatetime = GetTimeUs();
 
   m_mpdclient = new CMpdClient("music.bitlair", 6600);
   m_mpdclient->StartThread();
@@ -336,7 +337,10 @@ void CBitVis::SendData(int64_t time)
 
   string currentsong;
   if (m_mpdclient->CurrentSong(currentsong))
-    m_scrolloffset = m_nrcolumns;
+  {
+    m_scrolloffset = 0;
+    m_songupdatetime = GetTimeUs();
+  }
 
   SetText(text, currentsong.c_str());
   data.SetData(text, sizeof(text), true);
@@ -376,13 +380,20 @@ void CBitVis::SetText(uint8_t* buff, const char* str, int offset /*= 0*/)
       charpos++;
       pixlength++;
     }
-    charpos++;
-    pixlength++;
+
+    if (i < length - 1)
+    {
+      charpos++;
+      pixlength++;
+    }
   }
 
-  m_scrolloffset--;
-  if (m_scrolloffset < -pixlength)
-    m_scrolloffset = m_nrcolumns;
+  if (pixlength > m_nrcolumns && GetTimeUs() - m_songupdatetime > 2000000)
+  {
+    m_scrolloffset--;
+    if (m_scrolloffset < -pixlength)
+      m_scrolloffset = m_nrcolumns;
+  }
 }
 
 void CBitVis::InitChars()
