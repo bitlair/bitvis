@@ -59,7 +59,7 @@ void Cfft::Allocate(unsigned int size)
     Log("Building fft plan");
     int64_t start = GetTimeUs();
     m_plan = fftwf_plan_dft_r2c_1d(m_bufsize, m_fftin, m_outbuf, FFTW_MEASURE);
-    Log("Build fft plan in %.0f ms", (double)(GetTimeUs() - start) / 1000.0f);
+    Log("Built fft plan in %.0f ms", (double)(GetTimeUs() - start) / 1000.0f);
   }
 }
 
