@@ -93,19 +93,25 @@ bool CMpdClient::GetCurrentSong()
       if (datastream.fail())
         break;
 
+      string tmpline = line;
       string word;
-      if (GetWord(line, word))
+      if (GetWord(tmpline, word))
       {
         if (word == "Artist:")
-          artist = line.substr(1);
+          artist = tmpline.substr(1);
         else if (word == "Title:")
-          title = line.substr(1);
+          title = tmpline.substr(1);
       }
 
-      if (!artist.empty() && !title.empty())
+      if (line == "OK")
       {
-        string song = artist + " - " + title;
-        SetCurrentSong(song);
+        if (artist.empty())
+          artist = "Unknown artist";
+
+        if (title.empty())
+          title = "Unknown title";
+
+        SetCurrentSong(artist + " - " + title);
         return true;
       }
     }
