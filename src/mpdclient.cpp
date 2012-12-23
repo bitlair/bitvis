@@ -31,9 +31,14 @@ void CMpdClient::Process()
     }
 
     if (!GetCurrentSong())
+    {
       m_socket.Close();
-
-    USleep(1000000);
+      USleep(10000000);
+    }
+    else
+    {
+      USleep(1000000);
+    }
   }
 }
 
