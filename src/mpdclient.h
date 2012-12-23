@@ -20,7 +20,8 @@ class CMpdClient : public CThread
   private:
     bool         OpenSocket();
     bool         GetCurrentSong();
-    void         ClearCurrentSong();
+    void         SetCurrentSong(const std::string& song);
+    void         SetSockError();
 
     int              m_port;
     std::string      m_address;

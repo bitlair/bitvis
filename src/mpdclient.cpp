@@ -27,17 +27,11 @@ void CMpdClient::Process()
     if (!m_socket.IsOpen())
     {
       if (!OpenSocket())
-      {
-        ClearCurrentSong();
         continue;
-      }
     }
 
     if (!GetCurrentSong())
-    {
-      ClearCurrentSong();
       m_socket.Close();
-    }
 
     USleep(1000000);
   }
@@ -50,6 +44,7 @@ bool CMpdClient::OpenSocket()
 
   if (returnv != SUCCESS)
   {
+    SetSockError();
     LogError("Connecting to %s:%i, %s", m_address.c_str(), m_port, m_socket.GetError().c_str());
     m_socket.Close();
 
@@ -61,6 +56,7 @@ bool CMpdClient::OpenSocket()
   else
   {
     Log("Connected to %s:%i", m_address.c_str(), m_port);
+    SetCurrentSong("Connected to " + m_address + " " + ToString(m_port));
     return true;
   }
 }
@@ -71,6 +67,7 @@ bool CMpdClient::GetCurrentSong()
   data.SetData("currentsong\n");
   if (m_socket.Write(data) != SUCCESS)
   {
+    SetSockError();
     LogError("Writing socket: %s", m_socket.GetError().c_str());
     return false;
   }
@@ -83,6 +80,7 @@ bool CMpdClient::GetCurrentSong()
   {
     if (m_socket.Read(data) != SUCCESS)
     {
+      SetSockError();
       LogError("Reading socket: %s", m_socket.GetError().c_str());
       return false;
     }
@@ -107,30 +105,33 @@ bool CMpdClient::GetCurrentSong()
       if (!artist.empty() && !title.empty())
       {
         string song = artist + " - " + title;
-        CLock lock(m_condition);
-        if (song != m_currentsong)
-        {
-          m_currentsong = song;
-          m_songchanged = true;
-          lock.Leave();
-          Log("Song changed to \"%s\"", m_currentsong.c_str());
-        }
+        SetCurrentSong(song);
         return true;
       }
     }
   }
 
+  SetCurrentSong("Unable to get song info");
   return false;
 }
 
-void CMpdClient::ClearCurrentSong()
+void CMpdClient::SetCurrentSong(const std::string& song)
 {
   CLock lock(m_condition);
-  if (!m_currentsong.empty())
+  if (song != m_currentsong)
   {
-    m_currentsong.clear();
+    m_currentsong = song;
     m_songchanged = true;
+
+    lock.Leave();
+    Log("Song changed to \"%s\"", song.c_str());
   }
+}
+
+void CMpdClient::SetSockError()
+{
+  string error = m_address + " " + ToString(m_port) + " " + m_socket.GetError();
+  SetCurrentSong(error);
 }
 
 bool CMpdClient::CurrentSong(std::string& song)
