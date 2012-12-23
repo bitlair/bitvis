@@ -130,7 +130,7 @@ void CMpdClient::SetCurrentSong(const std::string& song)
 
 void CMpdClient::SetSockError()
 {
-  string error = m_address + " " + ToString(m_port) + " " + m_socket.GetError();
+  string error = m_address + ":" + ToString(m_port) + " " + m_socket.GetError();
   SetCurrentSong(error);
 }
 
