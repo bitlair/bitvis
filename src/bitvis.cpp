@@ -347,9 +347,6 @@ void CBitVis::SendData(int64_t time)
   uint8_t text[m_nrcolumns / 4 * m_fontheight];
   memset(text, 0, sizeof(text));
 
-  //add an empty line
-  data.SetData(text, m_nrcolumns / 4, true);
-
   string currentsong;
   if (m_mpdclient->CurrentSong(currentsong) || playingchanged)
   {
