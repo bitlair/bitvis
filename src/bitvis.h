@@ -53,6 +53,7 @@ class CBitVis
     int         m_nrlines;
     int         m_fontdisplay;
     float       m_decay;
+    int         m_fps;
     int         m_fontheight;
     int         m_scrolloffset;
     int64_t     m_songupdatetime;

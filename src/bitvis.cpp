@@ -48,6 +48,7 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_nrbins = 1024;
   m_nrcolumns = 120;
   m_decay = 0.5;
+  m_fps = 30;
 
   m_fontheight = 0;
   InitChars();
@@ -253,7 +254,7 @@ void CBitVis::ProcessAudio()
           m_fftbuf[j] += cabsf(m_fft.m_outbuf[j]) / m_fft.m_bufsize;
       }
 
-      if (m_samplecounter % (samplerate / 30) == 0)
+      if (m_samplecounter % (samplerate / m_fps) == 0)
       {
         float start = 0.0f;
         float add = 1.0f;
