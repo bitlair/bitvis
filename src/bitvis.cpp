@@ -58,6 +58,23 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_fontdisplay = 0;
   m_songupdatetime = GetTimeUs();
 
+  const char* flags = "f:";
+  int c;
+  while ((c = getopt(argc, argv, flags)) != -1)
+  {
+    if (c == 'f') //fps
+    {
+      int fps;
+      if (!StrToInt(string(optarg), fps) || fps <= 0)
+      {
+        LogError("Wrong argument \"%s\" for fps", optarg);
+        exit(1);
+      }
+
+      m_fps = fps;
+    }
+  }
+
   m_mpdclient = new CMpdClient("music.bitlair", 6600);
   m_mpdclient->StartThread();
 }
