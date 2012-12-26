@@ -233,12 +233,10 @@ int CJackClient::SJackProcessCallback(jack_nframes_t nframes, void *arg)
   return 0;
 }
 
-#define MAXBUFFER (1024 * 1024)
-
 void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
 {
   unsigned int neededsize = m_outsamples + nframes;
-  if (neededsize > MAXBUFFER)
+  if (neededsize > (unsigned int)m_samplerate / 10)
   {
     return;
   }
