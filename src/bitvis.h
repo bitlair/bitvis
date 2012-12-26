@@ -51,6 +51,7 @@ class CBitVis
     int         m_nrbins;
     int         m_nrcolumns;
     int         m_nrlines;
+    int         m_fontdisplay;
     float       m_decay;
     int         m_fontheight;
     int         m_scrolloffset;

@@ -14,6 +14,8 @@ CMpdClient::CMpdClient(std::string address, int port)
 {
   m_port = port;
   m_address = address;
+  m_isplaying = false;
+  m_playingchanged = false;
 }
 
 CMpdClient::~CMpdClient()
@@ -30,7 +32,7 @@ void CMpdClient::Process()
         continue;
     }
 
-    if (!GetCurrentSong())
+    if (!GetCurrentSong() || !GetPlayStatus())
     {
       m_socket.Close();
       USleep(10000000);
@@ -126,6 +128,70 @@ bool CMpdClient::GetCurrentSong()
   return false;
 }
 
+bool CMpdClient::GetPlayStatus()
+{
+  CTcpData data;
+  data.SetData("status\n");
+  if (m_socket.Write(data) != SUCCESS)
+  {
+    SetSockError();
+    LogError("Writing socket: %s", m_socket.GetError().c_str());
+    return false;
+  }
+
+  data.Clear();
+  bool isplaying = false;
+  while(1)
+  {
+    if (m_socket.Read(data) != SUCCESS)
+    {
+      SetSockError();
+      LogError("Reading socket: %s", m_socket.GetError().c_str());
+      return false;
+    }
+
+    stringstream datastream(data.GetData());
+    string line;
+    while (1)
+    {
+      getline(datastream, line);
+      if (datastream.fail())
+        break;
+
+      string tmpline = line;
+      string word;
+      if (GetWord(tmpline, word))
+      {
+        if (word == "state:" && GetWord(tmpline, word))
+        {
+          if (word == "play")
+            isplaying = true;
+        }
+      }
+
+      if (line == "OK")
+      {
+        CLock lock(m_condition);
+        if (m_isplaying == false && isplaying == true)
+          m_playingchanged = true;
+
+        m_isplaying = isplaying;
+        return true;
+      }
+    }
+  }
+
+  SetCurrentSong("Unable to get play status");
+
+  CLock lock(m_condition);
+  if (m_isplaying != false)
+    m_playingchanged = true;
+
+  m_isplaying = false;
+
+  return false;
+}
+
 void CMpdClient::SetCurrentSong(const std::string& song)
 {
   CLock lock(m_condition);
@@ -154,3 +220,10 @@ bool CMpdClient::CurrentSong(std::string& song)
   return songchanged;
 }
 
+bool CMpdClient::IsPlaying(bool& playingchanged)
+{
+  CLock lock(m_condition);
+  playingchanged = m_playingchanged;
+  m_playingchanged = false;
+  return m_isplaying;
+}

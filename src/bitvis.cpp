@@ -52,8 +52,9 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_fontheight = 0;
   InitChars();
 
-  m_nrlines = 48 - m_fontheight - 1;
+  m_nrlines = 48;
   m_scrolloffset = 0;
+  m_fontdisplay = 0;
   m_songupdatetime = GetTimeUs();
 
   m_mpdclient = new CMpdClient("music.bitlair", 6600);
@@ -291,7 +292,24 @@ void CBitVis::SendData(int64_t time)
   CTcpData data;
   data.SetData(":00");
 
-  for (int y = m_nrlines - 1; y >= 0; y--)
+  int nrlines;
+  bool playingchanged;
+  if (m_mpdclient->IsPlaying(playingchanged))
+  {
+    if (m_fontdisplay < m_fontheight)
+      m_fontdisplay++;
+
+    nrlines = m_nrlines - m_fontdisplay;
+  }
+  else
+  {
+    if (m_fontdisplay > 0)
+      m_fontdisplay--;
+
+    nrlines = m_nrlines - m_fontdisplay;
+  }
+
+  for (int y = nrlines - 1; y >= 0; y--)
   {
     uint8_t line[m_nrcolumns / 4];
     for (int x = 0; x < m_nrcolumns / 4; x++)
@@ -300,7 +318,7 @@ void CBitVis::SendData(int64_t time)
       for (int i = 0; i < 4; i++)
       {
         pixel <<= 2;
-        int value = Round32(((log10(m_displaybuf[x * 4 + i]) * 20.0f) + 55.0f) / 48.0f * m_nrlines);
+        int value = Round32(((log10(m_displaybuf[x * 4 + i]) * 20.0f) + 55.0f) / 48.0f * nrlines);
         if (value > y)
           pixel |= 1;
 
@@ -317,7 +335,7 @@ void CBitVis::SendData(int64_t time)
         if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
         {
           currpeak.value += 0.01f;
-          if (currpeak.value >= m_nrlines)
+          if (currpeak.value >= nrlines)
             currpeak.value = 0.0f;
         }
       }
@@ -333,7 +351,7 @@ void CBitVis::SendData(int64_t time)
   data.SetData(text, m_nrcolumns / 4, true);
 
   string currentsong;
-  if (m_mpdclient->CurrentSong(currentsong))
+  if (m_mpdclient->CurrentSong(currentsong) || playingchanged)
   {
     m_scrolloffset = 0;
     m_songupdatetime = GetTimeUs();
