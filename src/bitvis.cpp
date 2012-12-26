@@ -373,7 +373,8 @@ void CBitVis::SendData(int64_t time)
   }
 
   SetText(text, currentsong.c_str());
-  data.SetData(text, sizeof(text), true);
+  if (m_fontdisplay > 0)
+    data.SetData(text, m_nrcolumns / 4 * m_fontdisplay, true);
 
   uint8_t end[10];
   memset(end, 0, sizeof(end));
