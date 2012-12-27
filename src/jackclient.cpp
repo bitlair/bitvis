@@ -236,7 +236,7 @@ int CJackClient::SJackProcessCallback(jack_nframes_t nframes, void *arg)
 void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
 {
   unsigned int neededsize = m_outsamples + nframes;
-  if (neededsize > (unsigned int)m_samplerate / 10)
+  if (neededsize > (unsigned int)m_samplerate / 10 + nframes * 2)
   {
     return;
   }

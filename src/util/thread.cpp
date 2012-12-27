@@ -40,6 +40,8 @@ void* CThread::ThreadFunction(void* args)
   CThread* thread = reinterpret_cast<CThread*>(args);
   thread->Process();
   thread->m_running = false;
+
+  return NULL;
 }
 
 void CThread::Process()
