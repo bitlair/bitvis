@@ -209,6 +209,9 @@ void CBitVis::Process()
   }
 
   m_jackclient.Disconnect();
+  m_mpdclient->StopThread();
+  delete m_mpdclient;
+  m_mpdclient = NULL;
 }
 
 void CBitVis::ProcessSignalfd()
