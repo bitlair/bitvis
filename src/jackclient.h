@@ -61,7 +61,7 @@ class CJackClient
     int            m_pipe[2];
     CCondition     m_condition;
     float*         m_buf;
-    unsigned int   m_bufsize;
+    int            m_bufsize;
     SRC_STATE*     m_srcstate;
     int            m_outsamples;
     int64_t        m_audiotime;

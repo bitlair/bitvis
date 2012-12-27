@@ -235,8 +235,9 @@ int CJackClient::SJackProcessCallback(jack_nframes_t nframes, void *arg)
 
 void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
 {
-  unsigned int neededsize = m_outsamples + nframes;
-  if (neededsize > (unsigned int)m_samplerate / 10 + nframes * 2)
+  int outsamples = Round32((double)nframes / m_samplerate * m_outsamplerate + 2.0);
+  int neededsize = m_outsamples + outsamples;
+  if (neededsize > m_outsamplerate)
   {
     return;
   }
@@ -257,7 +258,7 @@ void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
   srcdata.data_in = jackptr;
   srcdata.data_out = m_buf + m_outsamples;
   srcdata.input_frames = nframes;
-  srcdata.output_frames = nframes;
+  srcdata.output_frames = outsamples;
   srcdata.src_ratio = (double)m_outsamplerate / m_samplerate;
 
   src_process(m_srcstate, &srcdata);
@@ -265,6 +266,9 @@ void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
 
   lock.Leave();
   m_condition.Signal();
+
+  if (srcdata.input_frames_used < (int)nframes)
+    Log("WARNING: %i out of %i frames used", (int)srcdata.input_frames_used, (int)nframes);
 }
 
 int CJackClient::GetAudio(float*& buf, int& bufsize, int& samplerate, int64_t& audiotime)
