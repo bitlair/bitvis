@@ -185,7 +185,7 @@ void CBitVis::Process()
 
     if (!m_socket.IsOpen() && GetTimeUs() - lastconnect > CONNECTINTERVAL)
     {
-      if (m_socket.Open("192.168.88.117", 1337, 10000000) == FAIL)
+      if (m_socket.Open("192.168.88.117", 1337, 10000000) != SUCCESS)
       {
         LogError("Failed to connect: %s", m_socket.GetError().c_str());
         m_socket.Close();
@@ -385,7 +385,7 @@ void CBitVis::SendData(int64_t time)
 
   USleep(time - GetTimeUs());
 
-  if (m_socket.Write(data) == FAIL)
+  if (m_socket.Write(data) != SUCCESS)
   {
     LogError("%s", m_socket.GetError().c_str());
     m_socket.Close();
