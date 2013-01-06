@@ -114,13 +114,22 @@ bool CMpdClient::GetCurrentSong()
 
       if (line == "OK")
       {
-        if (artist.empty())
-          artist = "Unknown artist";
+        string songtext;
+        if (artist.empty() && title.empty())
+        {
+          songtext = "Wat? No title?";
+        }
+        else
+        {
+          if (artist.empty())
+            artist = "Unknown artist";
+          if (title.empty())
+            title = "Unknown title";
 
-        if (title.empty())
-          title = "Unknown title";
+          songtext = artist + " - " + title;
+        }
 
-        SetCurrentSong(artist + " - " + title);
+        SetCurrentSong(songtext);
         return true;
       }
     }
