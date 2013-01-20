@@ -255,12 +255,35 @@ int CTcpClientSocket::Open(std::string address, int port, int usectimeout /*= -1
   m_address = address;
   m_port = port;
   m_usectimeout = usectimeout;
-  
-  m_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-  if (m_sock == -1) //can't make socket
+
+  struct addrinfo *addrinfo;
+  int rv = getaddrinfo(address.c_str(), ToString(port).c_str(), NULL, &addrinfo);
+  if (rv) //can't find host
   {
-    m_error = "socket() " + GetErrno();
+    m_error = "getaddrinfo() " + address + ":" + ToString(m_port) + " " + gai_strerror(rv);
+    return FAIL;
+  }
+
+  struct addrinfo *rp;
+  for (rp = addrinfo; rp != NULL; rp = rp->ai_next)
+  {
+    m_sock = socket(rp->ai_family, SOCK_STREAM, IPPROTO_TCP);
+
+    if (m_sock == -1) //can't make socket
+      continue;
+
+    if (connect(m_sock, rp->ai_addr, rp->ai_addrlen) != -1)
+      break;
+
+    close(m_sock);
+  }
+
+  freeaddrinfo(addrinfo);
+
+  if (rp == NULL) // Check for connect() failures
+  {
+    m_error = "connect() " + address + ":" + ToString(port) + " " + GetErrno();
     return FAIL;
   }
 
@@ -268,35 +291,6 @@ int CTcpClientSocket::Open(std::string address, int port, int usectimeout /*= -1
   {
     return FAIL;
   }
-  
-  struct sockaddr_in server; //where we connect to
-  memset(&server, 0, sizeof(server));
-
-  server.sin_family = AF_INET;
-  server.sin_addr.s_addr = inet_addr(address.c_str());
-  server.sin_port = htons(port);
-
-  struct hostent *host = gethostbyname(address.c_str());
-  if (!host) //can't find host
-  {
-    m_error = "gethostbyname() " + address + ":" + ToString(m_port) + " " + GetErrno();
-    return FAIL;
-  }
-  server.sin_addr.s_addr = *reinterpret_cast<in_addr_t*>(host->h_addr);
-
-  if (connect(m_sock, reinterpret_cast<struct sockaddr*>(&server), sizeof(server)) < 0)
-  {
-    if (errno != EINPROGRESS) //because of the non blocking socket, this means we're still connecting
-    {
-      m_error = "connect() " + address + ":" + ToString(port) + " " + GetErrno();
-      return FAIL;
-    }
-  }
-
-  int returnv = WaitForSocket(true, "Connect");//wait for the socket to become writeable, that means the connection is established
-
-  if (returnv == FAIL || returnv == TIMEOUT)
-    return returnv;
 
   //if this fails the socket might still work, so don't return an error
   SetSockOptions();
@@ -401,7 +395,7 @@ int CTcpClientSocket::SetInfo(std::string address, int port, int sock)
 
 int CTcpServerSocket::Open(std::string address, int port, int usectimeout)
 {
-  struct sockaddr_in bindaddr;
+  struct sockaddr_in6 bindaddr;
 
   Close();
   
@@ -412,7 +406,7 @@ int CTcpServerSocket::Open(std::string address, int port, int usectimeout)
   
   m_port = port;
   m_usectimeout = usectimeout;
-  m_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  m_sock = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
   if (m_sock == -1)
   {
@@ -425,21 +419,21 @@ int CTcpServerSocket::Open(std::string address, int port, int usectimeout)
   
   //bind the socket
   memset(&bindaddr, 0, sizeof(bindaddr));
-  bindaddr.sin_family = AF_INET;
-  bindaddr.sin_port = htons(m_port);
+  bindaddr.sin6_family = AF_INET6;
+  bindaddr.sin6_port = htons(m_port);
   if (address.empty())
   {
-    bindaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    bindaddr.sin6_addr = in6addr_any;
   }
   else
   {
-    struct hostent *host = gethostbyname(address.c_str());
+    struct hostent *host = gethostbyname2(address.c_str(), AF_INET6);
     if (host == NULL)
     {
-      m_error = "gethostbyname() " + m_address + ":" + ToString(m_port) + " " + GetErrno();
+      m_error = "gethostbyname2() " + m_address + ":" + ToString(m_port) + " " + GetErrno();
       return FAIL;
     }
-    bindaddr.sin_addr.s_addr = *reinterpret_cast<in_addr_t*>(host->h_addr);
+    bindaddr.sin6_addr = *reinterpret_cast<struct in6_addr*>(host->h_addr);
   }
 
   if (bind(m_sock, reinterpret_cast<struct sockaddr*>(&bindaddr), sizeof(bindaddr)) < 0)
@@ -464,7 +458,7 @@ int CTcpServerSocket::Open(std::string address, int port, int usectimeout)
 
 int CTcpServerSocket::Accept(CTcpClientSocket& socket)
 {
-  struct sockaddr_in client;
+  struct sockaddr_in6 client;
   socklen_t clientlen = sizeof(client);
 
   if (m_sock == -1)
@@ -484,7 +478,9 @@ int CTcpServerSocket::Accept(CTcpClientSocket& socket)
     return FAIL;
   }
 
-  if (socket.SetInfo(inet_ntoa(client.sin_addr), ntohs(client.sin_port), sock) != SUCCESS)
+  char address[INET6_ADDRSTRLEN];
+  inet_ntop(AF_INET6, &client.sin6_addr, address, INET6_ADDRSTRLEN);
+  if (socket.SetInfo(address, ntohs(client.sin6_port), sock) != SUCCESS)
   {
     m_error = socket.GetError();
     return FAIL;
