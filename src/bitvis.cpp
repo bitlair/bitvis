@@ -338,10 +338,7 @@ void CBitVis::SendData(int64_t time)
       uint8_t pixel = 0;
       for (int i = 0; i < 4; i++)
       {
-        pixel <<= 2;
         int value = Round32(((log10(m_displaybuf[x * 4 + i]) * 20.0f) + 55.0f) / 48.0f * nrlines);
-        if (value > y)
-          pixel |= 1;
 
         peak& currpeak = m_peakholds[x * 4 + i];
         if (value >= Round32(currpeak.value))
@@ -350,8 +347,12 @@ void CBitVis::SendData(int64_t time)
           currpeak.time = time;
         }
 
-        if (Round32(currpeak.value) == y)
+        pixel <<= 2;
+
+        if (Round32(currpeak.value) == y || y == 0)
           pixel |= 2;
+        else if (value > y)
+          pixel |= 1;
 
         if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
         {
