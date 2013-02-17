@@ -18,11 +18,20 @@ def configure(conf):
   conf.check(header_name='jack/jack.h')
   conf.check(header_name='fftw3.h')
   conf.check(header_name='samplerate.h')
+  conf.check(header_name='sys/ipc.h')
+  conf.check(header_name='sys/shm.h')
+
+  conf.check(header_name='X11/Xlib.h', auto_add_header_name=True)
+  conf.check(header_name='X11/extensions/Xrender.h')
+  conf.check(header_name='X11/extensions/XShm.h')
 
   conf.check(lib='fftw3', uselib_store='fftw3')
   conf.check(lib='fftw3f', uselib_store='fftw3f')
   conf.check(lib='jack', uselib_store='jack')
   conf.check(lib='samplerate', uselib_store='samplerate')
+  conf.check(lib='X11', uselib_store='X11')
+  conf.check(lib='Xext', uselib_store='Xext')
+  conf.check(lib='Xrender', uselib_store='Xrender')
   conf.check(lib='m', uselib_store='m', mandatory=False)
   conf.check(lib='pthread', uselib_store='pthread', mandatory=False)
 
@@ -49,4 +58,16 @@ def build(bld):
               includes='./src',
               cxxflags='-Wall -g -DUTILNAMESPACE=BitVisUtil',
               target='bitvis')
+
+  bld.program(source='src/bitx11/main.cpp\
+                      src/bitx11/bitx11.cpp\
+                      src/util/log.cpp\
+                      src/util/misc.cpp\
+                      src/util/mutex.cpp\
+                      src/util/timeutils.cpp\
+                      src/util/tcpsocket.cpp',
+              use=['m', 'rt', 'X11', 'Xrender', 'Xext'],
+              includes='./src',
+              cxxflags='-Wall -g -DUTILNAMESPACE=BitX11Util',
+              target='bitx11')
 
