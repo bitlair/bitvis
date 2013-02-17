@@ -66,7 +66,7 @@ string GetStrTime()
   return buff;
 }
 
-bool InitLog(string filename, ofstream& logfile)
+bool InitLog(string directory, string filename, ofstream& logfile)
 {
   string homepath;
   if (!GetHomePath(homepath))
@@ -75,8 +75,8 @@ bool InitLog(string filename, ofstream& logfile)
     return false;
   }
   
-  string directory = homepath + ".bitvis/";
-  string fullpath = directory + filename;
+  directory = homepath + directory;
+  string fullpath = directory + "/" + filename;
 
   //try to make the directory the log goes in
   if (mkdir(directory.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) == -1)
@@ -124,7 +124,7 @@ string PruneFunction(string function)
     return function.substr(spacepos + 1, parenpos - spacepos - 1);
 }
 
-void SetLogFile(std::string filename)
+void SetLogFile(const char* directory, const char* filename)
 {
   if (!g_logmutex)
     g_logmutex = new CMutex;
@@ -139,7 +139,7 @@ void SetLogFile(std::string filename)
   g_logbuff = NULL;
   g_logbuffsize = 0;
 
-  if (!InitLog(filename, *g_logfile))
+  if (!InitLog(directory, filename, *g_logfile))
     g_printlogtofile = false;
 }
 

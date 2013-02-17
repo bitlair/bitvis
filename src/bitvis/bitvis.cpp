@@ -86,7 +86,7 @@ CBitVis::~CBitVis()
 void CBitVis::Setup()
 {
   //init the logfile
-  SetLogFile("bitvis.log");
+  SetLogFile(".bitvis", "bitvis.log");
 
   SetupSignals();
 

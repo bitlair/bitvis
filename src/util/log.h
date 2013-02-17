@@ -34,7 +34,7 @@ enum LogLevel
 #define LogDebug(fmt, ...) g_printdebuglevel ? PrintLog(fmt, __PRETTY_FUNCTION__, LogLevelDebug, ##__VA_ARGS__) : (void)0
 
 void PrintLog (const char* fmt, const char* function, LogLevel loglevel, ...) __attribute__ ((format (printf, 1, 4)));
-void SetLogFile(std::string logfile);
+void SetLogFile(const char* directory, const char* filename);
 
 extern bool g_logtostderr;
 extern bool g_printlogtofile;
