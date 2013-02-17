@@ -33,18 +33,18 @@ def configure(conf):
   conf.write_config_header('config.h')
 
 def build(bld):
-  bld.program(source='src/main.cpp\
-                      src/bitvis.cpp\
-                      src/jackclient.cpp\
-                      src/mpdclient.cpp\
+  bld.program(source='src/bitvis/main.cpp\
+                      src/bitvis/bitvis.cpp\
+                      src/bitvis/jackclient.cpp\
+                      src/bitvis/mpdclient.cpp\
+                      src/bitvis/fft.cpp\
                       src/util/log.cpp\
                       src/util/misc.cpp\
                       src/util/mutex.cpp\
                       src/util/timeutils.cpp\
                       src/util/condition.cpp\
                       src/util/tcpsocket.cpp\
-                      src/util/thread.cpp\
-                      src/fft.cpp',
+                      src/util/thread.cpp',
               use=['m','pthread','rt', 'jack', 'fftw3', 'fftw3f', 'samplerate'],
               includes='./src',
               cxxflags='-Wall -g -DUTILNAMESPACE=BitVisUtil',
