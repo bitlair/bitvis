@@ -32,12 +32,13 @@ CBitX11::CBitX11(int argc, char *argv[])
   m_port = 1337;
   m_address = NULL;
   m_fps = 30.0f;
+  m_dither = false;
   m_destwidth = 120;
   m_destheight = 48;
   m_debug = false;
   m_debugscale = 2;
 
-  const char* flags = "p:a:f:d:";
+  const char* flags = "p:a:f:d:s";
   int c;
   while ((c = getopt(argc, argv, flags)) != -1)
   {
@@ -79,6 +80,10 @@ CBitX11::CBitX11(int argc, char *argv[])
       }
 
       m_debugscale = scale;
+    }
+    else if (c == 's') //dither
+    {
+      m_dither = true;
     }
   }
 
@@ -205,7 +210,7 @@ void CBitX11::Process()
     }
     avg /= m_destwidth * m_destheight * 2;
 
-    //quantize the planes, apply Floy-Steinberg dithering, and write into the buffer for the socket
+    //quantize the planes, optionally apply Floy-Steinberg dithering, and write into the buffer for the socket
     CTcpData data;
     data.SetData(":00");
     for (int y = 0; y < m_destheight; y++)
@@ -244,14 +249,17 @@ void CBitX11::Process()
             ledpos++;
           }
 
-          //apply Floyd-Steinberg dither
           quanterror = *line - quantval;
           *line = quantval;
 
-          line[1] += quanterror * 7 / 16;
-          line[m_destwidth - 1] += quanterror * 3 / 16;
-          line[m_destwidth] += quanterror * 5 / 16;
-          line[m_destwidth + 1] += quanterror / 16;
+          //apply Floyd-Steinberg dither
+          if (m_dither)
+          {
+            line[1] += quanterror * 7 / 16;
+            line[m_destwidth - 1] += quanterror * 3 / 16;
+            line[m_destwidth] += quanterror * 5 / 16;
+            line[m_destwidth + 1] += quanterror / 16;
+          }
 
           line++;
         }

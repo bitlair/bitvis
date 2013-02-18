@@ -42,6 +42,7 @@ class CBitX11
     int                m_port;
     const char*        m_address;
     float              m_fps;
+    bool               m_dither;
 
     CTcpClientSocket   m_socket;
 
