@@ -36,6 +36,12 @@ using namespace std;
 
 CBitVis::CBitVis(int argc, char *argv[])
 {
+  m_debug = false;
+  m_debugscale = 2;
+  m_address = NULL;
+  m_port = 1337;
+  m_mpdaddress = NULL;
+  m_mpdport = 6600;
   g_printdebuglevel = true;
   m_stop = false;
   m_buf = NULL;
@@ -49,6 +55,7 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_nrcolumns = 120;
   m_decay = 0.5;
   m_fps = 30;
+  m_mpdclient = NULL;
 
   m_fontheight = 0;
   InitChars();
@@ -58,7 +65,7 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_fontdisplay = 0;
   m_songupdatetime = GetTimeUs();
 
-  const char* flags = "f:";
+  const char* flags = "f:d:p:a:m:o:";
   int c;
   while ((c = getopt(argc, argv, flags)) != -1)
   {
@@ -73,10 +80,52 @@ CBitVis::CBitVis(int argc, char *argv[])
 
       m_fps = fps;
     }
+    else if (c == 'd') //debug
+    {
+      int scale;
+      if (!StrToInt(string(optarg), scale) || scale <= 0)
+      {
+        LogError("Wrong argument \"%s\" for debug", optarg);
+        exit(1);
+      }
+
+      m_debugscale = scale;
+      m_debug = true;
+    }
+    else if (c == 'p') //port
+    {
+      int port;
+      if (!StrToInt(string(optarg), port) || port <= 0 || port > 65535)
+      {
+        LogError("Wrong argument \"%s\" for port", optarg);
+        exit(1);
+      }
+
+      m_port = port;
+    }
+    else if (c == 'a') //address
+    {
+      m_address = optarg;
+    }
+    else if (c == 'm') //mpd address
+    {
+      m_mpdaddress = optarg;
+    }
+    else if (c == 'o') //mpd port
+    {
+      int port;
+      if (!StrToInt(string(optarg), port) || port <= 0 || port > 65535)
+      {
+        LogError("Wrong argument \"%s\" for mpd port", optarg);
+        exit(1);
+      }
+
+      m_mpdport = port;
+    }
   }
 
-  m_mpdclient = new CMpdClient("music.bitlair", 6600);
-  m_mpdclient->StartThread();
+  if (!m_address)
+    m_debug = true;
 }
 
 CBitVis::~CBitVis()
@@ -103,6 +152,14 @@ void CBitVis::Setup()
 
   m_peakholds = new peak[m_nrcolumns];
   memset(m_peakholds, 0, m_nrcolumns * sizeof(peak));
+
+  m_debugwindow.Enable(m_nrcolumns, m_nrlines, m_debugscale);
+
+  if (m_mpdaddress)
+  {
+    m_mpdclient = new CMpdClient(m_mpdaddress, m_mpdport);
+    m_mpdclient->StartThread();
+  }
 }
 
 void CBitVis::SetupSignals()
@@ -183,9 +240,9 @@ void CBitVis::Process()
     while ((msg = m_jackclient.GetMessage()) != MsgNone)
       LogDebug("got message %s from jack client", MsgToString(msg));
 
-    if (!m_socket.IsOpen() && GetTimeUs() - lastconnect > CONNECTINTERVAL)
+    if (!m_socket.IsOpen() && m_address && GetTimeUs() - lastconnect > CONNECTINTERVAL)
     {
-      if (m_socket.Open("192.168.88.117", 1337, 10000000) != SUCCESS)
+      if (m_socket.Open(m_address, m_port, 10000000) != SUCCESS)
       {
         LogError("Failed to connect: %s", m_socket.GetError().c_str());
         m_socket.Close();
@@ -209,9 +266,13 @@ void CBitVis::Process()
   }
 
   m_jackclient.Disconnect();
-  m_mpdclient->StopThread();
-  delete m_mpdclient;
-  m_mpdclient = NULL;
+
+  if (m_mpdclient)
+  {
+    m_mpdclient->StopThread();
+    delete m_mpdclient;
+    m_mpdclient = NULL;
+  }
 }
 
 void CBitVis::ProcessSignalfd()
@@ -248,9 +309,6 @@ void CBitVis::ProcessAudio()
   int64_t audiotime;
   if ((samples = m_jackclient.GetAudio(m_buf, m_bufsize, samplerate, audiotime)) > 0)
   {
-    if (!m_socket.IsOpen())
-      return;
-
     int additions = 0;
     for (int i = 1; i < m_nrcolumns; i++)
       additions += i;
@@ -306,6 +364,7 @@ void CBitVis::ProcessAudio()
 void CBitVis::Cleanup()
 {
   m_jackclient.Disconnect();
+  m_debugwindow.Disable();
 }
 
 void CBitVis::SendData(int64_t time)
@@ -315,7 +374,7 @@ void CBitVis::SendData(int64_t time)
 
   int nrlines;
   bool playingchanged;
-  if (m_mpdclient->IsPlaying(playingchanged))
+  if (m_mpdclient && m_mpdclient->IsPlaying(playingchanged))
   {
     if (m_fontdisplay < m_fontheight)
       m_fontdisplay++;
@@ -370,7 +429,7 @@ void CBitVis::SendData(int64_t time)
   memset(text, 0, sizeof(text));
 
   string currentsong;
-  if (m_mpdclient->CurrentSong(currentsong) || playingchanged)
+  if ((m_mpdclient && m_mpdclient->CurrentSong(currentsong)) || playingchanged)
   {
     m_scrolloffset = 0;
     m_songupdatetime = GetTimeUs();
@@ -386,11 +445,13 @@ void CBitVis::SendData(int64_t time)
 
   USleep(time - GetTimeUs());
 
-  if (m_socket.Write(data) != SUCCESS)
+  if (m_socket.IsOpen() && m_socket.Write(data) != SUCCESS)
   {
     LogError("%s", m_socket.GetError().c_str());
     m_socket.Close();
   }
+
+  m_debugwindow.DisplayFrame(data);
 }
 
 void CBitVis::SetText(uint8_t* buff, const char* str, int offset /*= 0*/)

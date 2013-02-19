@@ -49,6 +49,7 @@ def build(bld):
                       src/bitvis/jackclient.cpp\
                       src/bitvis/mpdclient.cpp\
                       src/bitvis/fft.cpp\
+                      src/util/debugwindow.cpp\
                       src/util/log.cpp\
                       src/util/misc.cpp\
                       src/util/mutex.cpp\
@@ -56,7 +57,7 @@ def build(bld):
                       src/util/condition.cpp\
                       src/util/tcpsocket.cpp\
                       src/util/thread.cpp',
-              use=['m','pthread','rt', 'jack', 'fftw3', 'fftw3f', 'samplerate'],
+              use=['m','pthread','rt', 'jack', 'fftw3', 'fftw3f', 'samplerate', 'X11', 'Xrender'],
               includes='./src',
               cxxflags='-Wall -g -DUTILNAMESPACE=BitVisUtil',
               target='bitvis')

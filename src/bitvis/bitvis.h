@@ -25,6 +25,7 @@
 #include "jackclient.h"
 #include "fft.h"
 #include "util/tcpsocket.h"
+#include "util/debugwindow.h"
 #include "mpdclient.h"
 
 class CBitVis
@@ -38,26 +39,34 @@ class CBitVis
     void Cleanup();
 
   private:
-    bool        m_stop;
-    CJackClient m_jackclient;
-    int         m_signalfd;
-    Cfft        m_fft;
-    float*      m_buf;
-    int         m_bufsize;
-    float*      m_fftbuf;
-    float*      m_displaybuf;
-    int         m_samplecounter;
-    int         m_nrffts;
-    int         m_nrbins;
-    int         m_nrcolumns;
-    int         m_nrlines;
-    int         m_fontdisplay;
-    float       m_decay;
-    int         m_fps;
-    int         m_fontheight;
-    int         m_scrolloffset;
-    int64_t     m_songupdatetime;
-    CMpdClient* m_mpdclient;
+    bool         m_stop;
+    char*        m_address;
+    int          m_port;
+    char*        m_mpdaddress;
+    int          m_mpdport;
+    CJackClient  m_jackclient;
+    int          m_signalfd;
+    Cfft         m_fft;
+    float*       m_buf;
+    int          m_bufsize;
+    float*       m_fftbuf;
+    float*       m_displaybuf;
+    int          m_samplecounter;
+    int          m_nrffts;
+    int          m_nrbins;
+    int          m_nrcolumns;
+    int          m_nrlines;
+    int          m_fontdisplay;
+    float        m_decay;
+    int          m_fps;
+    int          m_fontheight;
+    int          m_scrolloffset;
+    int64_t      m_songupdatetime;
+    CMpdClient*  m_mpdclient;
+
+    bool         m_debug;
+    int          m_debugscale;
+    CDebugWindow m_debugwindow;
 
     struct peak
     {

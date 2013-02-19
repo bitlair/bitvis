@@ -47,6 +47,7 @@ CDebugWindow::CDebugWindow()
 
 CDebugWindow::~CDebugWindow()
 {
+  Disable();
 }
 
 void CDebugWindow::Enable(int width, int height, int scale)
