@@ -17,9 +17,12 @@
  */
 
 #include "bitvlc.h"
+#include "util/log.h"
 
 int main (int argc, char *argv[])
 {
+  SetLogFile(".bitvlc", "bitvlc.log");
+
   CBitVlc bitvlc(argc, argv);
 
   bitvlc.Setup();

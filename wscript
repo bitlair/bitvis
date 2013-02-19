@@ -79,9 +79,12 @@ def build(bld):
 
   bld.program(source='src/bitvlc/main.cpp\
                       src/bitvlc/bitvlc.cpp\
+                      src/util/condition.cpp\
+                      src/util/debugwindow.cpp\
                       src/util/log.cpp\
                       src/util/misc.cpp\
                       src/util/mutex.cpp\
+                      src/util/thread.cpp\
                       src/util/timeutils.cpp\
                       src/util/tcpsocket.cpp',
               use=['m', 'rt', 'X11', 'Xrender', 'Xext', 'vlc'],
