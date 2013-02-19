@@ -20,6 +20,7 @@ def configure(conf):
   conf.check(header_name='samplerate.h')
   conf.check(header_name='sys/ipc.h')
   conf.check(header_name='sys/shm.h')
+  conf.check(header_name='vlc/vlc.h')
 
   conf.check(header_name='X11/Xlib.h', auto_add_header_name=True)
   conf.check(header_name='X11/extensions/Xrender.h')
@@ -32,6 +33,7 @@ def configure(conf):
   conf.check(lib='X11', uselib_store='X11')
   conf.check(lib='Xext', uselib_store='Xext')
   conf.check(lib='Xrender', uselib_store='Xrender')
+  conf.check(lib='vlc', uselib_store='vlc')
   conf.check(lib='m', uselib_store='m', mandatory=False)
   conf.check(lib='pthread', uselib_store='pthread', mandatory=False)
 
@@ -73,4 +75,16 @@ def build(bld):
               includes='./src',
               cxxflags='-Wall -g -DUTILNAMESPACE=BitX11Util',
               target='bitx11')
+
+  bld.program(source='src/bitvlc/main.cpp\
+                      src/bitvlc/bitvlc.cpp\
+                      src/util/log.cpp\
+                      src/util/misc.cpp\
+                      src/util/mutex.cpp\
+                      src/util/timeutils.cpp\
+                      src/util/tcpsocket.cpp',
+              use=['m', 'rt', 'X11', 'Xrender', 'Xext', 'vlc'],
+              includes='./src',
+              cxxflags='-Wall -g -DUTILNAMESPACE=BitVlcUtil',
+              target='bitvlc')
 
