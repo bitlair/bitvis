@@ -61,11 +61,14 @@ def build(bld):
 
   bld.program(source='src/bitx11/main.cpp\
                       src/bitx11/bitx11.cpp\
+                      src/util/debugwindow.cpp\
                       src/util/log.cpp\
                       src/util/misc.cpp\
                       src/util/mutex.cpp\
                       src/util/timeutils.cpp\
-                      src/util/tcpsocket.cpp',
+                      src/util/condition.cpp\
+                      src/util/tcpsocket.cpp\
+                      src/util/thread.cpp',
               use=['m', 'rt', 'X11', 'Xrender', 'Xext'],
               includes='./src',
               cxxflags='-Wall -g -DUTILNAMESPACE=BitX11Util',
