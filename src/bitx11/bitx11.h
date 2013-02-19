@@ -20,6 +20,7 @@
 #define BITX11_H
 
 #include "util/tcpsocket.h"
+#include "util/debugwindow.h"
 
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
@@ -44,6 +45,10 @@ class CBitX11
     float              m_fps;
     bool               m_dither;
 
+    bool               m_debug;
+    int                m_debugscale;
+    CDebugWindow       m_debugwindow;
+
     CTcpClientSocket   m_socket;
 
     Display*           m_dpy;
@@ -63,16 +68,6 @@ class CBitX11
     XShmSegmentInfo    m_shmseginfo;
     XImage*            m_xim;
 
-    bool               m_debug;
-    int                m_debugscale;
-    Window             m_debugwindow;
-    GC                 m_debuggc;
-    Pixmap             m_debugpixmap;
-    XRenderPictFormat* m_debugsrcformat;
-    XRenderPictFormat* m_debugdstformat;
-    Picture            m_debugsrcpicture;
-    Picture            m_debugdstpicture;
-    XTransform         m_debugtransform;
 };
 
 #endif //BITX11_H

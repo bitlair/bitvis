@@ -102,7 +102,6 @@ CBitX11::CBitX11(int argc, char *argv[])
   m_pictattr.repeat = RepeatNone;
 
   memset(&m_transform, 0, sizeof(m_transform));
-  memset(&m_debugtransform, 0, sizeof(m_debugtransform));
 }
 
 CBitX11::~CBitX11()
@@ -138,20 +137,7 @@ void CBitX11::Setup()
   XShmAttach(m_dpy, &m_shmseginfo);
 
   if (m_debug)
-  {
-    m_debugwindow = XCreateSimpleWindow(m_dpy, RootWindow(m_dpy, DefaultScreen(m_dpy)),
-                                        0, 0, m_destwidth * m_debugscale, m_destheight * m_debugscale, 0, 0, 0);
-    XMapWindow(m_dpy, m_debugwindow);
-    XFlush(m_dpy);
-
-    m_debuggc = XCreateGC(m_dpy, m_debugwindow, 0, NULL);
-    m_debugpixmap = XCreatePixmap(m_dpy, m_rootwin, m_destwidth, m_destheight, m_rootattr.depth);
-    m_debugsrcformat = XRenderFindVisualFormat(m_dpy, m_rootattr.visual);
-    m_debugdstformat = XRenderFindVisualFormat(m_dpy, m_rootattr.visual);
-    m_debugsrcpicture = XRenderCreatePicture(m_dpy, m_debugpixmap, m_debugsrcformat, CPRepeat, &m_pictattr);
-    m_debugdstpicture = XRenderCreatePicture(m_dpy, m_debugwindow, m_debugdstformat, CPRepeat, &m_pictattr);
-    XRenderSetPictureFilter(m_dpy, m_debugsrcpicture, "nearest", NULL, 0);
-  }
+    m_debugwindow.Enable(m_destwidth, m_destheight, m_debugscale);
 }
 
 void CBitX11::Process()
@@ -282,39 +268,7 @@ void CBitX11::Process()
       }
     }
 
-    if (m_debug)
-    {
-      //write the quantized and dithered planes back into the Ximage
-      for (int y = 0; y < m_destheight; y++)
-      {
-        uint8_t* ximline = (uint8_t*)m_xim->data + y * m_xim->bytes_per_line;
-        uint8_t* ximend  = ximline + m_xim->bytes_per_line;
-        int* planeliner = planes[0] + y * planewidth + 1;
-        int* planelineg = planes[1] + y * planewidth + 1;
-
-        while (ximline != ximend)
-        {
-          *(ximline++) = 0;
-          *(ximline++) = Clamp(*(planelineg++), 0, 255);
-          *(ximline++) = Clamp(*(planeliner++), 0, 255);
-          ximline++;
-        }
-      }
-
-      //write the Ximage back into the pixmap
-      XShmPutImage(m_dpy, m_debugpixmap, m_debuggc, m_xim, 0, 0, 0, 0, m_destwidth, m_destheight, False);
-
-      m_debugtransform.matrix[0][0] = m_destwidth;
-      m_debugtransform.matrix[1][1] = m_destwidth;
-      m_debugtransform.matrix[2][2] = m_destwidth * m_debugscale;
-
-      //render the pixmap on the debug window, scaled by m_debugscale
-      XRenderSetPictureTransform (m_dpy, m_debugsrcpicture, &m_debugtransform);
-      XRenderComposite(m_dpy, PictOpSrc, m_debugsrcpicture, None, m_debugdstpicture,
-                       0, 0, 0, 0, 0, 0, m_destwidth * m_debugscale, m_destheight * m_debugscale);
-
-      XFlush(m_dpy);
-    }
+    m_debugwindow.DisplayFrame(data);
 
     looptime += Round64(1000000.0f / m_fps);
     USleep(looptime - GetTimeUs());
