@@ -153,7 +153,8 @@ void CBitVis::Setup()
   m_peakholds = new peak[m_nrcolumns];
   memset(m_peakholds, 0, m_nrcolumns * sizeof(peak));
 
-  m_debugwindow.Enable(m_nrcolumns, m_nrlines, m_debugscale);
+  if (m_debug)
+    m_debugwindow.Enable(m_nrcolumns, m_nrlines, m_debugscale);
 
   if (m_mpdaddress)
   {
