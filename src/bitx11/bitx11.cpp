@@ -212,7 +212,7 @@ void CBitX11::Process()
         int  quanterror;
 
         uint8_t* ledpos = ledline;
-        int      ledcounter = 0;
+        int      ledcounter = 3;
 
         while (line != lineend)
         {
@@ -228,10 +228,10 @@ void CBitX11::Process()
             quantval = 0;
           }
 
-          ledcounter++;
-          if (ledcounter == 4)
+          ledcounter--;
+          if (ledcounter == -1)
           {
-            ledcounter = 0;
+            ledcounter = 3;
             ledpos++;
           }
 
