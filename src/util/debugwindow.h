@@ -23,6 +23,8 @@
 #include "condition.h"
 #include "tcpsocket.h"
 
+#include <deque>
+
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
 
@@ -45,7 +47,8 @@ class CDebugWindow : public CThread
 
     int                      m_scale;
     CCondition               m_condition;
-    CTcpData                 m_data;
+    bool                     m_process;
+    std::deque<CTcpData>     m_data;
 
     Display*                 m_dpy;
     int                      m_width;

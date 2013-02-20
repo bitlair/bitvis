@@ -64,7 +64,10 @@ void CDebugWindow::Enable(int width, int height, int scale)
 void CDebugWindow::Disable()
 {
   AsyncStopThread();
+  CLock lock(m_condition);
+  m_process = true;
   m_condition.Signal();
+  lock.Leave();
   StopThread();
 }
 
@@ -73,7 +76,8 @@ void CDebugWindow::DisplayFrame(CTcpData& data)
   if (m_running)
   {
     CLock lock(m_condition);
-    m_data = data;
+    m_data.push_back(data);
+    m_process = true;
     m_condition.Signal();
   }
 }
@@ -121,6 +125,8 @@ bool CDebugWindow::Setup()
   m_transform.matrix[0][0] = m_width;
   m_transform.matrix[1][1] = m_width;
   m_transform.matrix[2][2] = m_width * m_scale;
+
+  m_process = false;
 
   return true;
 }
@@ -170,12 +176,17 @@ void CDebugWindow::Cleanup()
   }
 }
 
+#define BYTESPERFRAME  (120 * 48 / 4 + 3)
+#define BAUDRATE       (500000)
+
 void CDebugWindow::ProcessInternal()
 {
-  bool render = true;
-  int  count  = -3;
-  int  xcount = 0;
-  int  ycount = 0;
+  bool    render = true;
+  int     count  = -3;
+  int     xcount = 0;
+  int     ycount = 0;
+  int64_t lastrender = GetTimeUs();
+
   while (!m_stop)
   {
     if (render)
@@ -186,17 +197,33 @@ void CDebugWindow::ProcessInternal()
       XRenderComposite(m_dpy, PictOpSrc, m_srcpicture, None, m_dstpicture,
                        0, 0, 0, 0, 0, 0, m_width * m_scale, m_height * m_scale);
 
+      //add a delay, to simulate the bytes being transferred over rs232 to the bitpanel
+      int64_t frametime = 1000000LL * 10 * BYTESPERFRAME / BAUDRATE;
+      int64_t now = GetTimeUs();
+      USleep(lastrender + frametime - now);
+      lastrender = GetTimeUs();
+
       XFlush(m_dpy);
       render = false;
     }
 
     CLock lock(m_condition);
-    m_condition.Wait();
-    CTcpData data = m_data;
+    if (m_data.empty())
+    {
+      while (!m_process)
+        m_condition.Wait();
+      m_process = false;
+    }
+
+    if (m_data.empty())
+      continue;
+
+    CTcpData data = m_data.front();
+    m_data.pop_front();
     lock.Leave();
 
-    int size = m_data.GetSize();
-    uint8_t* dataptr = (uint8_t*)m_data.GetData();
+    int size = data.GetSize();
+    uint8_t* dataptr = (uint8_t*)data.GetData();
     for (int i = 0; i < size; i++)
     {
       if (count == -3)
@@ -217,8 +244,8 @@ void CDebugWindow::ProcessInternal()
         for (int j = 0; j < 4; j++)
         {
           pixelptr++;
-          *(pixelptr++) = ((dataptr[i] >> (j * 2)) & 1) ? 0xFF : 0;
-          *(pixelptr++) = ((dataptr[i] >> (j * 2 + 1)) & 1) ? 0xFF : 0;
+          *(pixelptr++) = ((dataptr[i] << (j * 2 + 1)) & 128) ? 0xFF : 0;
+          *(pixelptr++) = ((dataptr[i] << (j * 2)) & 128) ? 0xFF : 0;
           pixelptr++;
           xcount++;
           if (xcount == m_width)
