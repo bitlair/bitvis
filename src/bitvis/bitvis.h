@@ -63,6 +63,8 @@ class CBitVis
     int          m_scrolloffset;
     int64_t      m_songupdatetime;
     CMpdClient*  m_mpdclient;
+    int64_t      m_volumetime;
+    int          m_displayvolume;
 
     bool         m_debug;
     int          m_debugscale;

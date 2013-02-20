@@ -16,6 +16,8 @@ CMpdClient::CMpdClient(std::string address, int port)
   m_address = address;
   m_isplaying = false;
   m_playingchanged = false;
+  m_volume = 0;
+  m_volumechanged = false;
 }
 
 CMpdClient::~CMpdClient()
@@ -39,7 +41,7 @@ void CMpdClient::Process()
     }
     else
     {
-      USleep(1000000);
+      USleep(30000);
     }
   }
 
@@ -182,9 +184,19 @@ bool CMpdClient::GetPlayStatus()
         }
         else if (word == "volume:")
         {
-          if (GetWord(tmpline, word))
-            if (word == "0")
-              muted = true;
+          int volume;
+          if (GetWord(tmpline, word) && StrToInt(word, volume))
+          {
+            if (volume == 0)
+              volume = true;
+
+            if (volume != m_volume)
+            {
+              CLock lock(m_condition);
+              m_volume = volume;
+              m_volumechanged = true;
+            }
+          }
         }
       }
 
@@ -248,4 +260,13 @@ bool CMpdClient::IsPlaying(bool& playingchanged)
   playingchanged = m_playingchanged;
   m_playingchanged = false;
   return m_isplaying;
+}
+
+bool CMpdClient::GetVolume(int& volume)
+{
+  CLock lock(m_condition);
+  volume = m_volume;
+  bool changed = m_volumechanged;
+  m_volumechanged = false;
+  return changed;
 }

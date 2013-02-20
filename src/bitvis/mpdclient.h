@@ -17,6 +17,7 @@ class CMpdClient : public CThread
     virtual void Process();
     bool CurrentSong(std::string& song);
     bool IsPlaying(bool& playingchanged);
+    bool GetVolume(int& volume);
 
   private:
     bool         OpenSocket();
@@ -33,6 +34,8 @@ class CMpdClient : public CThread
     bool             m_songchanged;
     bool             m_isplaying;
     bool             m_playingchanged;
+    int              m_volume;
+    bool             m_volumechanged;
 };
 
 

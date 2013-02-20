@@ -64,6 +64,8 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_scrolloffset = 0;
   m_fontdisplay = 0;
   m_songupdatetime = GetTimeUs();
+  m_volumetime = GetTimeUs();
+  m_displayvolume = 0;
 
   const char* flags = "f:d:p:a:m:o:";
   int c;
@@ -375,7 +377,16 @@ void CBitVis::SendData(int64_t time)
 
   int nrlines;
   bool playingchanged;
-  if (m_mpdclient && m_mpdclient->IsPlaying(playingchanged))
+  bool isplaying = false;
+  int  volume = 0;
+  if (m_mpdclient)
+  {
+    isplaying = m_mpdclient->IsPlaying(playingchanged);
+    if (m_mpdclient->GetVolume(volume))
+      m_volumetime = GetTimeUs();
+  }
+
+  if (isplaying)
   {
     if (m_fontdisplay < m_fontheight)
       m_fontdisplay++;
@@ -390,40 +401,63 @@ void CBitVis::SendData(int64_t time)
     nrlines = m_nrlines - m_fontdisplay;
   }
 
-  for (int y = nrlines - 1; y >= 0; y--)
+  if (isplaying && GetTimeUs() - m_volumetime < 1000000)
   {
-    uint8_t line[m_nrcolumns / 4];
-    for (int x = 0; x < m_nrcolumns / 4; x++)
+    for (int y = 0; y < nrlines; y++)
     {
-      uint8_t pixel = 0;
-      for (int i = 0; i < 4; i++)
+      uint8_t line[m_nrcolumns / 4];
+      memset(line, 0, sizeof(line));
+      int pixelcounter = 3;
+      for (int x = 0; x < m_nrcolumns; x++)
       {
-        int value = Round32(((log10(m_displaybuf[x * 4 + i]) * 20.0f) + 55.0f) / 48.0f * nrlines);
-
-        peak& currpeak = m_peakholds[x * 4 + i];
-        if (value >= Round32(currpeak.value))
-        {
-          currpeak.value = value;
-          currpeak.time = time;
-        }
-
-        pixel <<= 2;
-
-        if (Round32(currpeak.value) == y || y == 0)
-          pixel |= 2;
-        else if (value > y)
-          pixel |= 1;
-
-        if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
-        {
-          currpeak.value += 0.01f;
-          if (currpeak.value >= nrlines)
-            currpeak.value = 0.0f;
-        }
+        if (y == nrlines - 1)
+          line[x / 4] |= 1 << (pixelcounter * 2 + 1);
+        else if (x < m_displayvolume)
+          line[x / 4] |= 1 << (pixelcounter * 2);
+        pixelcounter--;
+        if (pixelcounter == -1)
+          pixelcounter = 3;
       }
-      line[x] = pixel;
+      data.SetData(line, sizeof(line), true);
     }
-    data.SetData(line, sizeof(line), true);
+  }
+  else
+  {
+    for (int y = nrlines - 1; y >= 0; y--)
+    {
+      uint8_t line[m_nrcolumns / 4];
+      for (int x = 0; x < m_nrcolumns / 4; x++)
+      {
+        uint8_t pixel = 0;
+        for (int i = 0; i < 4; i++)
+        {
+          int value = Round32(((log10(m_displaybuf[x * 4 + i]) * 20.0f) + 55.0f) / 48.0f * nrlines);
+
+          peak& currpeak = m_peakholds[x * 4 + i];
+          if (value >= Round32(currpeak.value))
+          {
+            currpeak.value = value;
+            currpeak.time = time;
+          }
+
+          pixel <<= 2;
+
+          if (Round32(currpeak.value) == y || y == 0)
+            pixel |= 2;
+          else if (value > y)
+            pixel |= 1;
+
+          if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
+          {
+            currpeak.value += 0.01f;
+            if (currpeak.value >= nrlines)
+              currpeak.value = 0.0f;
+          }
+        }
+        line[x] = pixel;
+      }
+      data.SetData(line, sizeof(line), true);
+    }
   }
 
   uint8_t text[m_nrcolumns / 4 * m_fontheight];
@@ -453,6 +487,11 @@ void CBitVis::SendData(int64_t time)
   }
 
   m_debugwindow.DisplayFrame(data);
+
+  if (volume > m_displayvolume)
+    m_displayvolume++;
+  else if (volume < m_displayvolume)
+    m_displayvolume--;
 }
 
 void CBitVis::SetText(uint8_t* buff, const char* str, int offset /*= 0*/)
