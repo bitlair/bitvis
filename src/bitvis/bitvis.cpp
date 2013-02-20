@@ -401,7 +401,7 @@ void CBitVis::SendData(int64_t time)
     nrlines = m_nrlines - m_fontdisplay;
   }
 
-  if (isplaying && GetTimeUs() - m_volumetime < 1000000)
+  if (isplaying && GetTimeUs() - m_volumetime < 1000000 && m_displayvolume > 0)
   {
     for (int y = 0; y < nrlines; y++)
     {
@@ -411,9 +411,18 @@ void CBitVis::SendData(int64_t time)
       for (int x = 0; x < m_nrcolumns; x++)
       {
         if (y == nrlines - 1)
+        {
           line[x / 4] |= 1 << (pixelcounter * 2 + 1);
-        else if (x < m_displayvolume)
-          line[x / 4] |= 1 << (pixelcounter * 2);
+        }
+        else if (x < m_displayvolume * m_nrcolumns / 100)
+        {
+          if (m_displayvolume > 75)
+            line[x / 4] |= 2 << (pixelcounter * 2);
+          else if (m_displayvolume > 50)
+            line[x / 4] |= 3 << (pixelcounter * 2);
+          else
+            line[x / 4] |= 1 << (pixelcounter * 2);
+        }
         pixelcounter--;
         if (pixelcounter == -1)
           pixelcounter = 3;
