@@ -46,7 +46,6 @@ static ofstream* g_logfile;
 
 static int             g_logbuffsize; //size of the buffer
 static char*           g_logbuff;     //buffer for vsnprintf
-static vector<string>* g_logstrings;  //we save any log lines here while the log isn't open
 
 //returns hour:minutes:seconds:microseconds
 string GetStrTime()
@@ -185,27 +184,9 @@ void PrintLog (const char* fmt, const char* function, LogLevel loglevel, ...)
   if (nrspaces > 0)
     funcstr.insert(funcstr.length(), nrspaces, ' ');
   
+  //write the string to the logfile
   if (g_logfile && g_logfile->is_open() && g_printlogtofile)
-  {
-    //print any saved log lines
-    if (g_logstrings)
-    {
-      for (vector<string>::iterator it = g_logstrings->begin(); it != g_logstrings->end(); it++)
-        *g_logfile << *it << flush;
-
-      delete g_logstrings;
-      g_logstrings = NULL;
-    }
-    //write the string to the logfile
     *g_logfile << GetStrTime() << " " << funcstr << " " << logstr << '\n' << flush;
-  }
-  else if (g_printlogtofile)
-  {
-    //save the log line if the log isn't open yet
-    if (!g_logstrings)
-      g_logstrings = new vector<string>;
-    g_logstrings->push_back(GetStrTime() + " " + funcstr + " " + logstr + '\n');
-  }
 
   //print to stdout when requested
   if (g_logtostderr)
