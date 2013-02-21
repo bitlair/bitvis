@@ -154,7 +154,7 @@ bool CMpdClient::GetPlayStatus()
 
   data.Clear();
   bool isplaying = false;
-  bool muted = false;
+  int  volume = -1;
   while(1)
   {
     if (m_socket.Read(data) != SUCCESS)
@@ -184,25 +184,15 @@ bool CMpdClient::GetPlayStatus()
         }
         else if (word == "volume:")
         {
-          int volume;
-          if (GetWord(tmpline, word) && StrToInt(word, volume))
-          {
-            if (volume == 0)
-              volume = true;
-
-            if (volume != m_volume)
-            {
-              CLock lock(m_condition);
-              m_volume = volume;
-              m_volumechanged = true;
-            }
-          }
+          int parsevolume;
+          if (GetWord(tmpline, word) && StrToInt(word, parsevolume))
+            volume = parsevolume;
         }
       }
 
       if (line == "OK")
       {
-        if (muted)
+        if (volume == 0)
           isplaying = false;
 
         CLock lock(m_condition);
@@ -210,6 +200,13 @@ bool CMpdClient::GetPlayStatus()
           m_playingchanged = true;
 
         m_isplaying = isplaying;
+
+        if (volume != -1 && m_volume != volume)
+        {
+          m_volume = volume;
+          m_volumechanged = true;
+        }
+
         return true;
       }
     }

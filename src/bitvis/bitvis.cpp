@@ -401,7 +401,7 @@ void CBitVis::SendData(int64_t time)
     nrlines = m_nrlines - m_fontdisplay;
   }
 
-  if (isplaying && GetTimeUs() - m_volumetime < 1000000 && m_displayvolume > 0)
+  if (isplaying && GetTimeUs() - m_volumetime < 1000000)
   {
     for (int y = 0; y < nrlines; y++)
     {
