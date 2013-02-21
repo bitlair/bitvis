@@ -497,10 +497,15 @@ void CBitVis::SendData(int64_t time)
 
   m_debugwindow.DisplayFrame(data);
 
-  if (volume > m_displayvolume)
-    m_displayvolume++;
-  else if (volume < m_displayvolume)
-    m_displayvolume--;
+  if (volume != m_displayvolume)
+  {
+    m_volumetime = GetTimeUs();
+
+    if (volume > m_displayvolume)
+      m_displayvolume++;
+    else if (volume < m_displayvolume)
+      m_displayvolume--;
+  }
 }
 
 void CBitVis::SetText(uint8_t* buff, const char* str, int offset /*= 0*/)
