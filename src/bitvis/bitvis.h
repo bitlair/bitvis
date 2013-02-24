@@ -21,22 +21,28 @@
 
 #include <map>
 #include <vector>
+#include <deque>
+#include <utility>
 
 #include "jackclient.h"
 #include "fft.h"
 #include "util/tcpsocket.h"
 #include "util/debugwindow.h"
+#include "util/thread.h"
+#include "util/condition.h"
 #include "mpdclient.h"
 
-class CBitVis
+class CBitVis : public CThread
 {
   public:
     CBitVis(int argc, char *argv[]);
     ~CBitVis();
 
     void Setup();
-    void Process();
+    void Run();
     void Cleanup();
+
+    virtual void Process();
 
   private:
     bool         m_stop;
@@ -65,6 +71,9 @@ class CBitVis
     CMpdClient*  m_mpdclient;
     int64_t      m_volumetime;
     int          m_displayvolume;
+
+    CCondition   m_condition;
+    std::deque< std::pair<int64_t, CTcpData> > m_data;
 
     bool         m_debug;
     int          m_debugscale;

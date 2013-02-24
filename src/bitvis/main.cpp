@@ -23,7 +23,7 @@ int main (int argc, char *argv[])
   CBitVis bitvis(argc, argv);
 
   bitvis.Setup();
-  bitvis.Process();
+  bitvis.Run();
   bitvis.Cleanup();
 
   return 0;

@@ -21,6 +21,7 @@
 #include "util/log.h"
 #include "util/misc.h"
 #include "util/timeutils.h"
+#include "util/lock.h"
 
 #include <signal.h>
 #include <sys/signalfd.h>
@@ -163,6 +164,8 @@ void CBitVis::Setup()
     m_mpdclient = new CMpdClient(m_mpdaddress, m_mpdport);
     m_mpdclient->StartThread();
   }
+
+  StartThread();
 }
 
 void CBitVis::SetupSignals()
@@ -218,7 +221,7 @@ void CBitVis::SetupSignals()
     LogError("sigpocmask: %s", GetErrno().c_str());
 }
 
-void CBitVis::Process()
+void CBitVis::Run()
 {
   int64_t lastconnect = GetTimeUs() - CONNECTINTERVAL - 1;
 
@@ -243,6 +246,7 @@ void CBitVis::Process()
     while ((msg = m_jackclient.GetMessage()) != MsgNone)
       LogDebug("got message %s from jack client", MsgToString(msg));
 
+    CLock lock(m_condition);
     if (!m_socket.IsOpen() && m_address && GetTimeUs() - lastconnect > CONNECTINTERVAL)
     {
       if (m_socket.Open(m_address, m_port, 10000000) != SUCCESS)
@@ -256,6 +260,7 @@ void CBitVis::Process()
       }
       didconnect = true;
     }
+    lock.Leave();
 
     if (didconnect)
       lastconnect = GetTimeUs();
@@ -275,6 +280,34 @@ void CBitVis::Process()
     m_mpdclient->StopThread();
     delete m_mpdclient;
     m_mpdclient = NULL;
+  }
+}
+
+void CBitVis::Process()
+{
+  CLock lock(m_condition);
+  while (!m_stop)
+  {
+    while (!m_stop && m_data.empty())
+      m_condition.Wait();
+
+    if (m_data.empty())
+      continue;
+
+    int64_t  time = m_data.front().first;
+    CTcpData data = m_data.front().second;
+    m_data.pop_front();
+
+    lock.Leave();
+    USleep(time - GetTimeUs());
+    lock.Enter();
+
+    if (m_socket.IsOpen() && m_socket.Write(data) != SUCCESS)
+    {
+      LogError("%s", m_socket.GetError().c_str());
+      m_socket.Close();
+    }
+    m_debugwindow.DisplayFrame(data);
   }
 }
 
@@ -366,8 +399,11 @@ void CBitVis::ProcessAudio()
 
 void CBitVis::Cleanup()
 {
+  AsyncStopThread();
+  m_condition.Signal();
   m_jackclient.Disconnect();
   m_debugwindow.Disable();
+  StopThread();
 }
 
 void CBitVis::SendData(int64_t time)
@@ -487,15 +523,10 @@ void CBitVis::SendData(int64_t time)
   memset(end, 0, sizeof(end));
   data.SetData(end, sizeof(end), true);
 
-  USleep(time - GetTimeUs());
-
-  if (m_socket.IsOpen() && m_socket.Write(data) != SUCCESS)
-  {
-    LogError("%s", m_socket.GetError().c_str());
-    m_socket.Close();
-  }
-
-  m_debugwindow.DisplayFrame(data);
+  CLock lock(m_condition);
+  m_data.push_back(make_pair(time + 10000, data));
+  lock.Leave();
+  m_condition.Signal();
 
   if (volume != m_displayvolume)
   {
