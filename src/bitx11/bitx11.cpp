@@ -158,6 +158,8 @@ void CBitX11::Process()
       }
     }
 
+    XGetWindowAttributes(m_dpy, m_rootwin, &m_rootattr);
+
     m_transform.matrix[0][0] = m_rootattr.width;
     m_transform.matrix[1][1] = m_rootattr.width;
     m_transform.matrix[2][2] = m_destwidth;
