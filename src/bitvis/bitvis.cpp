@@ -246,9 +246,9 @@ void CBitVis::Run()
     while ((msg = m_jackclient.GetMessage()) != MsgNone)
       LogDebug("got message %s from jack client", MsgToString(msg));
 
-    CLock lock(m_condition);
     if (!m_socket.IsOpen() && m_address && GetTimeUs() - lastconnect > CONNECTINTERVAL)
     {
+      CLock lock(m_condition);
       if (m_socket.Open(m_address, m_port, 10000000) != SUCCESS)
       {
         LogError("Failed to connect: %s", m_socket.GetError().c_str());
@@ -260,7 +260,6 @@ void CBitVis::Run()
       }
       didconnect = true;
     }
-    lock.Leave();
 
     if (didconnect)
       lastconnect = GetTimeUs();
