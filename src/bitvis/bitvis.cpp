@@ -284,6 +284,27 @@ void CBitVis::Run()
 
 void CBitVis::Process()
 {
+  //set priority to SCHED_FIFO to improve timing
+  int policy;
+  sched_param param;
+  int returnv = pthread_getschedparam(m_thread, &policy, &param);
+  if (returnv == 0)
+  {
+    policy = SCHED_FIFO;
+    param.sched_priority = sched_get_priority_min(SCHED_FIFO);
+    returnv = pthread_setschedparam(m_thread, policy, &param);
+    if (returnv == 0)
+      Log("successfully set thread priority of transmit thread to SCHED_FIFO");
+    else
+      LogError("pthread_setschedparam: %s", strerror(returnv));
+  }
+  else
+  {
+    LogError("pthread_getschedparam: %s", strerror(returnv));
+  }
+
+  int64_t smoothtime = 0;
+
   CLock lock(m_condition);
   while (!m_stop)
   {
@@ -297,8 +318,20 @@ void CBitVis::Process()
     CTcpData data = m_data.front().second;
     m_data.pop_front();
 
+    if (smoothtime == 0)
+    {
+      //init smoothtime first with a timestamp
+      smoothtime = time;
+    }
+    else
+    {
+      //filter out timing jitter
+      smoothtime += 1000000 / m_fps;
+      smoothtime += (time - smoothtime) / 100;
+    }
+
     lock.Leave();
-    USleep(time - GetTimeUs());
+    USleep(smoothtime - GetTimeUs());
     lock.Enter();
 
     if (m_socket.IsOpen() && m_socket.Write(data) != SUCCESS)
@@ -522,6 +555,9 @@ void CBitVis::SendData(int64_t time)
   memset(end, 0, sizeof(end));
   data.SetData(end, sizeof(end), true);
 
+  //add 10 milliseconds to the timestamp, since the current timestamp
+  //might already have passed because of processing, this decreases
+  //jitter in the display output
   CLock lock(m_condition);
   m_data.push_back(make_pair(time + 10000, data));
   lock.Leave();
