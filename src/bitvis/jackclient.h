@@ -60,11 +60,11 @@ class CJackClient
     int            m_portevents;
     int            m_pipe[2];
     CCondition     m_condition;
-    float*         m_buf;
-    int            m_bufsize;
+    float*         m_buf[2];
+    int            m_bufsize[2];
+    int            m_outsamples[2];
+    int64_t        m_audiotime[2];
     SRC_STATE*     m_srcstate;
-    int            m_outsamples;
-    int64_t        m_audiotime;
 
     bool        ConnectInternal();
     void        CheckMessages();

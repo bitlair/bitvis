@@ -46,11 +46,15 @@ CJackClient::CJackClient()
   m_exitstatus    = (jack_status_t)0;
   m_samplerate    = 0;
   m_outsamplerate = 40000;
-  m_buf           = NULL;
-  m_bufsize       = 0;
   m_srcstate      = NULL;
-  m_outsamples    = 0;
-  m_audiotime     = 0;
+
+  for (int i = 0; i < 2; i++)
+  {
+    m_buf[i]        = NULL;
+    m_bufsize[i]    = 0;
+    m_outsamples[i] = 0;
+    m_audiotime[i]  = 0;
+  }
 
   if (pipe2(m_pipe, O_NONBLOCK) == -1)
   {
@@ -129,8 +133,16 @@ bool CJackClient::ConnectInternal()
     return false;
   }
 
+  //initialize the resampler
   int error;
   m_srcstate = src_new(SRC_SINC_FASTEST, 1, &error);
+
+  //alloc one second buffers
+  for (int i = 0; i < 2; i++)
+  {
+    m_bufsize[i] = m_outsamplerate;
+    m_buf[i]     = (float*)malloc(m_bufsize[i] * sizeof(float));
+  }
 
   //everything set up, activate
   returnv = jack_activate(m_client);
@@ -167,9 +179,12 @@ void CJackClient::Disconnect()
   m_exitstatus = (jack_status_t)0;
   m_samplerate = 0;
 
-  free(m_buf);
-  m_buf = NULL;
-  m_bufsize = 0;
+  for (int i = 0; i < 2; i++)
+  {
+    free(m_buf[i]);
+    m_buf[i] = NULL;
+    m_bufsize[i] = 0;
+  }
 
   if (m_srcstate)
   {
@@ -235,64 +250,97 @@ int CJackClient::SJackProcessCallback(jack_nframes_t nframes, void *arg)
 
 void CJackClient::PJackProcessCallback(jack_nframes_t nframes)
 {
+  int64_t now = GetTimeUs();
   int outsamples = Round32((double)nframes / m_samplerate * m_outsamplerate + 2.0);
-  int neededsize = m_outsamples + outsamples;
-  if (neededsize > m_outsamplerate)
+
+  //use a trylock, so the realtime jack thread doesn't block
+  CLock lock(m_condition, true);
+
+  int index;
+  if (lock.HasLock())
   {
-    return;
+    //the mutex is locked, copy samples from the temp buffer into the main buffer
+    if (m_outsamples[1] > 0)
+    {
+      //if the main buffer is empty, use the time from the temp buffer
+      if (m_outsamples[0] == 0)
+        m_audiotime[0] = m_audiotime[1];
+
+      //copy as many samples as possible from the temp buffer to the main buffer
+      int size = Min(m_outsamples[1], m_bufsize[0] - m_outsamples[0]);
+      memcpy(m_buf[0] + m_outsamples[0], m_buf[1], size * sizeof(float));
+      m_outsamples[1] -= size;
+      m_outsamples[0] += size;
+    }
+
+    //if the main buffer has enough room, put the audio samples there
+    //otherwise put them into the temp buffer
+    if (m_bufsize[0] - m_outsamples[0] >= outsamples)
+      index = 0;
+    else
+      index = 1;
   }
-  else if (m_bufsize < neededsize)
+  else
   {
-    m_bufsize = neededsize;
-    m_buf = (float*)realloc(m_buf, m_bufsize * sizeof(float));
+    //the mutex couldn't be locked, copy samples into the temp buffer
+    index = 1;
   }
 
-  CLock lock(m_condition);
+  if (m_bufsize[index] - m_outsamples[index] < outsamples)
+    return; //no room, drop the samples
 
-  if (m_outsamples == 0)
-    m_audiotime = GetTimeUs();
+  if (m_outsamples[index] == 0)
+    m_audiotime[index] = now;
 
   float* jackptr = (float*)jack_port_get_buffer(m_jackport, nframes);
 
-  SRC_DATA srcdata = {};
-  srcdata.data_in = jackptr;
-  srcdata.data_out = m_buf + m_outsamples;
-  srcdata.input_frames = nframes;
-  srcdata.output_frames = outsamples;
-  srcdata.src_ratio = (double)m_outsamplerate / m_samplerate;
+  if (m_outsamplerate != m_samplerate)
+  {
+    SRC_DATA srcdata = {};
+    srcdata.data_in = jackptr;
+    srcdata.data_out = m_buf[index] + m_outsamples[index];
+    srcdata.input_frames = nframes;
+    srcdata.output_frames = outsamples;
+    srcdata.src_ratio = (double)m_outsamplerate / m_samplerate;
 
-  src_process(m_srcstate, &srcdata);
-  m_outsamples += srcdata.output_frames_gen;
+    src_process(m_srcstate, &srcdata);
+    m_outsamples[index] += srcdata.output_frames_gen;
+
+    if (srcdata.input_frames_used < (int)nframes)
+      Log("WARNING: %i out of %i frames used", (int)srcdata.input_frames_used, (int)nframes);
+  }
+  else
+  {
+    memcpy(m_buf[index] + m_outsamples[index], jackptr, nframes * sizeof(float));
+    m_outsamples[index] += nframes;
+  }
 
   lock.Leave();
   m_condition.Signal();
-
-  if (srcdata.input_frames_used < (int)nframes)
-    Log("WARNING: %i out of %i frames used", (int)srcdata.input_frames_used, (int)nframes);
 }
 
 int CJackClient::GetAudio(float*& buf, int& bufsize, int& samplerate, int64_t& audiotime)
 {
   CLock lock(m_condition);
-  m_condition.Wait(1000000, m_outsamples, 0);
+  m_condition.Wait(1000000, m_outsamples[0], 0);
 
-  if (m_outsamples == 0)
+  if (m_outsamples[0] == 0)
     return 0;
 
   samplerate = m_outsamplerate;
 
-  if (bufsize < m_outsamples)
+  if (bufsize < m_outsamples[0])
   {
-    bufsize = m_outsamples;
+    bufsize = m_outsamples[0];
     buf = (float*)realloc(buf, bufsize * sizeof(float));
   }
 
-  memcpy(buf, m_buf, m_outsamples * sizeof(float));
+  memcpy(buf, m_buf[0], m_outsamples[0] * sizeof(float));
 
-  int outsamples = m_outsamples;
-  m_outsamples = 0;
+  int outsamples = m_outsamples[0];
+  m_outsamples[0] = 0;
 
-  audiotime = m_audiotime;
+  audiotime = m_audiotime[0];
 
   return outsamples;
 }

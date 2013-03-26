@@ -31,6 +31,15 @@ class CLock
     Enter();
   }
 
+  CLock(CMutex& mutex, bool trylock) : m_mutex(mutex)
+  {
+    m_haslock = false;
+    if (trylock)
+      TryEnter();
+    else
+      Enter();
+  }
+
   ~CLock()
   {
     Leave();
@@ -45,6 +54,17 @@ class CLock
     }
   }
 
+  void TryEnter()
+  {
+    if (!m_haslock)
+    {
+      if (m_mutex.TryLock())
+      {
+        m_haslock = true;
+      }
+    }
+  }
+
   void Leave()
   {
     if (m_haslock)
@@ -52,6 +72,11 @@ class CLock
       m_mutex.Unlock();
       m_haslock = false;
     }
+  }
+
+  bool HasLock()
+  {
+    return m_haslock;
   }
 
   private:
