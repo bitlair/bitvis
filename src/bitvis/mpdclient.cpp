@@ -213,12 +213,7 @@ bool CMpdClient::GetPlayStatus()
   }
 
   SetCurrentSong("Unable to get play status");
-
-  CLock lock(m_condition);
-  if (m_isplaying != false)
-    m_playingchanged = true;
-
-  m_isplaying = false;
+  m_isplaying = true; //to make the error message show on the led display
 
   return false;
 }
@@ -238,8 +233,8 @@ void CMpdClient::SetCurrentSong(const std::string& song)
 
 void CMpdClient::SetSockError()
 {
-  string error = m_address + ":" + ToString(m_port) + " " + m_socket.GetError();
-  SetCurrentSong(error);
+  SetCurrentSong(m_socket.GetError());
+  m_isplaying = true; //to make the error message show on the led display
 }
 
 bool CMpdClient::CurrentSong(std::string& song)
