@@ -248,7 +248,7 @@ void CBitVis::Run()
 
     if (!m_socket.IsOpen() && m_address && GetTimeUs() - lastconnect > CONNECTINTERVAL)
     {
-      CLock lock(m_condition);
+      CLock lock(m_socketlock);
       if (m_socket.Open(m_address, m_port, 10000000) != SUCCESS)
       {
         LogError("Failed to connect: %s", m_socket.GetError().c_str());
@@ -305,10 +305,10 @@ void CBitVis::Process()
 
   int64_t smoothtime = 0;
 
-  CLock lock(m_condition);
-  while (!m_stop)
+  while (!CThread::m_stop)
   {
-    while (!m_stop && m_data.empty())
+    CLock lock(m_condition);
+    while (!CThread::m_stop && m_data.empty())
       m_condition.Wait();
 
     if (m_data.empty())
@@ -317,6 +317,7 @@ void CBitVis::Process()
     int64_t  time = m_data.front().first;
     CTcpData data = m_data.front().second;
     m_data.pop_front();
+    lock.Leave();
 
     if (smoothtime == 0)
     {
@@ -330,15 +331,16 @@ void CBitVis::Process()
       smoothtime += (time - smoothtime) / 100;
     }
 
-    lock.Leave();
     USleep(smoothtime - GetTimeUs());
-    lock.Enter();
 
+    CLock socketlock(m_socketlock);
     if (m_socket.IsOpen() && m_socket.Write(data) != SUCCESS)
     {
       LogError("%s", m_socket.GetError().c_str());
       m_socket.Close();
     }
+    socketlock.Leave();
+
     m_debugwindow.DisplayFrame(data);
   }
 }
@@ -431,8 +433,11 @@ void CBitVis::ProcessAudio()
 
 void CBitVis::Cleanup()
 {
+  m_condition.Lock();
   AsyncStopThread();
   m_condition.Signal();
+  m_condition.Unlock();
+
   m_jackclient.Disconnect();
   m_debugwindow.Disable();
   StopThread();

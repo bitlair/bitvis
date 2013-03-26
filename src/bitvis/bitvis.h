@@ -87,6 +87,7 @@ class CBitVis : public CThread
 
     peak*       m_peakholds;
 
+    CMutex           m_socketlock;
     CTcpClientSocket m_socket;
 
     std::map<char, std::vector<unsigned int> > m_glyphs;
