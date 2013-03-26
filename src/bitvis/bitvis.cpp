@@ -358,7 +358,7 @@ void CBitVis::ProcessAudio()
       m_fft.AddSample(m_buf[i]);
       m_samplecounter++;
 
-      if (m_samplecounter % 32 == 0)
+      if (m_samplecounter % 128 == 0)
       {
         m_fft.ApplyWindow();
         fftwf_execute(m_fft.m_plan);
