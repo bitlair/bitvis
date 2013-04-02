@@ -94,7 +94,8 @@ class CBitVis : public CThread
       float   value;
     };
 
-    peak*       m_peakholds;
+    peak*        m_peakholds;
+    bool         m_peakup;
 
     CMutex           m_socketlock;
     CTcpClientSocket m_socket;

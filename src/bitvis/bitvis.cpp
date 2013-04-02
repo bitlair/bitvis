@@ -64,6 +64,7 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_hasaudio = false;
   m_scopesample = 0.0;
   m_scopesamples = 0;
+  m_peakup = false;
 
   m_fontheight = 0;
   InitChars();
@@ -75,7 +76,7 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_volumetime = GetTimeUs();
   m_displayvolume = 0;
 
-  const char* flags = "f:d:p:a:m:o:";
+  const char* flags = "f:d:p:a:m:o:u";
   int c;
   while ((c = getopt(argc, argv, flags)) != -1)
   {
@@ -131,6 +132,10 @@ CBitVis::CBitVis(int argc, char *argv[])
       }
 
       m_mpdport = port;
+    }
+    else if (c == 'u') //peak hold goes up
+    {
+      m_peakup = true;
     }
   }
 
@@ -627,17 +632,30 @@ void CBitVis::SendData(int64_t time)
           {
             pixel |= 3;
           }
-
-          if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
-          {
-            currpeak.value += 0.01f;
-            if (currpeak.value >= nrlines)
-              currpeak.value = 0.0f;
-          }
         }
         line[x] = pixel;
       }
       data.SetData(line, sizeof(line), true);
+    }
+
+    for (int i = 0; i < m_nrcolumns; i++)
+    {
+      peak& currpeak = m_peakholds[i];
+      if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
+      {
+        if (m_peakup)
+        {
+          currpeak.value += 0.5f;
+          if (currpeak.value >= nrlines)
+            currpeak.value = 0.0f;
+        }
+        else
+        {
+          currpeak.value -= 0.5f;
+          if (currpeak.value <= 0.0f)
+            currpeak.value = 0.0f;
+        }
+      }
     }
   }
 
