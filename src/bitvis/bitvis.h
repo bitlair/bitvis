@@ -71,6 +71,15 @@ class CBitVis : public CThread
     CMpdClient*  m_mpdclient;
     int64_t      m_volumetime;
     int          m_displayvolume;
+    bool         m_hasaudio;
+
+    float        m_prevsample;
+    float*       m_scopebuf;
+    float*       m_scopedisplaybuf;
+    int          m_scopebufpos;
+    int64_t      m_scopetime;
+    float        m_scopesample;
+    int          m_scopesamples;
 
     CCondition   m_condition;
     std::deque< std::pair<int64_t, CTcpData> > m_data;

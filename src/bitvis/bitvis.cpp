@@ -57,6 +57,13 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_decay = 0.5;
   m_fps = 30;
   m_mpdclient = NULL;
+  m_scopebuf = NULL;
+  m_scopedisplaybuf = NULL;
+  m_scopebufpos = 0;
+  m_scopetime = 0;
+  m_hasaudio = false;
+  m_scopesample = 0.0;
+  m_scopesamples = 0;
 
   m_fontheight = 0;
   InitChars();
@@ -155,6 +162,14 @@ void CBitVis::Setup()
 
   m_peakholds = new peak[m_nrcolumns];
   memset(m_peakholds, 0, m_nrcolumns * sizeof(peak));
+
+  m_scopebuf = new float[m_nrcolumns];
+  memset(m_scopebuf, 0, m_nrcolumns * sizeof(float));
+
+  m_scopedisplaybuf = new float[m_nrcolumns];
+  memset(m_scopedisplaybuf, 0, m_nrcolumns * sizeof(float));
+
+  m_prevsample = 0.0;
 
   if (m_debug)
     m_debugwindow.Enable(m_nrcolumns, m_nrlines, m_debugscale);
@@ -392,6 +407,39 @@ void CBitVis::ProcessAudio()
       m_fft.AddSample(m_buf[i]);
       m_samplecounter++;
 
+      if (m_scopebufpos == -1)
+      {
+        const float hys = 0.1;
+        if ((m_prevsample < hys && m_buf[i] > hys) || (m_prevsample > hys && m_buf[i] < hys))
+        {
+          m_scopebufpos = 0;
+          m_scopetime = audiotime;
+          m_hasaudio = true;
+        }
+      }
+
+      m_prevsample = m_buf[i];
+
+      if (m_scopebufpos >= 0)
+      {
+        m_scopesample += m_buf[i];
+        m_scopesamples++;
+        if (m_scopesamples >= 11)
+        {
+          m_scopebuf[m_scopebufpos] = m_scopesample / m_scopesamples;
+          m_scopesample = 0.0;
+          m_scopesamples = 0;
+          m_scopebufpos++;
+
+          if (m_scopebufpos == m_nrcolumns)
+          {
+            m_scopebufpos = -1;
+            memcpy(m_scopedisplaybuf, m_scopebuf, m_nrcolumns * sizeof(float));
+          }
+        }
+      }
+
+
       if (m_samplecounter % 128 == 0)
       {
         m_fft.ApplyWindow();
@@ -420,6 +468,12 @@ void CBitVis::ProcessAudio()
 
           start = next;
           add += increase;
+        }
+
+        if (m_hasaudio && m_scopebufpos == -1 && audiotime - m_scopetime > 100000)
+        {
+          memset(m_scopedisplaybuf, 0, m_nrcolumns * sizeof(float));
+          m_hasaudio = false;
         }
 
         SendData(audiotime + Round64(1000000.0 / (double)samplerate * (double)i));
@@ -519,9 +573,10 @@ void CBitVis::SendData(int64_t time)
         uint8_t pixel = 0;
         for (int i = 0; i < 4; i++)
         {
-          int value = Round32(((log10(m_displaybuf[x * 4 + i]) * 20.0f) + 55.0f) / 48.0f * nrlines);
+          int pixelpos = x * 4 + i;
+          int value = Round32(((log10(m_displaybuf[pixelpos]) * 20.0f) + 55.0f) / 48.0f * nrlines);
 
-          peak& currpeak = m_peakholds[x * 4 + i];
+          peak& currpeak = m_peakholds[pixelpos];
           if (value >= Round32(currpeak.value))
           {
             currpeak.value = value;
@@ -530,11 +585,35 @@ void CBitVis::SendData(int64_t time)
 
           pixel <<= 2;
 
+          float prev;
+          float curr;
+          float next;
+
+          const float mul = 0.25f;
+          const float add = 0.75f;
+
+          curr = (m_scopedisplaybuf[pixelpos] * mul + add) * nrlines;
+
+          if (pixelpos == 0)
+            prev = curr;
+          else
+            prev = (m_scopedisplaybuf[pixelpos - 1] * mul + add) * nrlines;
+
+          if (pixelpos == m_nrcolumns - 1)
+            next = curr;
+          else
+            next = (m_scopedisplaybuf[pixelpos + 1] * mul + add) * nrlines;
+
+          int bounds[2] = {Round32((prev + curr) * 0.5f), Round32((next + curr) * 0.5f)};
+
           if (y == 0)
           {
-            pixel |= 2;
-            if (x * 4 + i < elapsed)
-              pixel |= 1;
+            if (m_hasaudio || isplaying)
+            {
+              pixel |= 2;
+              if (x * 4 + i < elapsed)
+                pixel |= 1;
+            }
           }
           else if (Round32(currpeak.value) == y)
           {
@@ -543,6 +622,10 @@ void CBitVis::SendData(int64_t time)
           else if (value > y)
           {
             pixel |= 1;
+          }
+          else if (m_hasaudio && ((y <= bounds[0] && y >= bounds[1]) || (y >= bounds[0] && y <= bounds[1])))
+          {
+            pixel |= 3;
           }
 
           if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
