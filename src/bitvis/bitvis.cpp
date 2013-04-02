@@ -58,13 +58,16 @@ CBitVis::CBitVis(int argc, char *argv[])
   m_fps = 30;
   m_mpdclient = NULL;
   m_scopebuf = NULL;
+  m_scopebufsize = 0;
+  m_scopecorrbuf = NULL;
   m_scopedisplaybuf = NULL;
   m_scopebufpos = 0;
-  m_scopetime = 0;
+  m_hystime = 0;
   m_hasaudio = false;
-  m_scopesample = 0.0;
-  m_scopesamples = 0;
   m_peakup = false;
+  m_hysstate = 0;
+  m_scopemul = 1.0f;
+  m_srcstate = NULL;
 
   m_fontheight = 0;
   InitChars();
@@ -168,13 +171,18 @@ void CBitVis::Setup()
   m_peakholds = new peak[m_nrcolumns];
   memset(m_peakholds, 0, m_nrcolumns * sizeof(peak));
 
-  m_scopebuf = new float[m_nrcolumns];
-  memset(m_scopebuf, 0, m_nrcolumns * sizeof(float));
+  m_scopebufsize = m_nrcolumns * 2;
+  m_scopebuf = new float[m_scopebufsize];
+  memset(m_scopebuf, 0, m_scopebufsize * sizeof(float));
 
   m_scopedisplaybuf = new float[m_nrcolumns];
   memset(m_scopedisplaybuf, 0, m_nrcolumns * sizeof(float));
 
-  m_prevsample = 0.0;
+  m_scopecorrbuf = new float[m_nrcolumns];
+  memset(m_scopecorrbuf, 0, m_nrcolumns * sizeof(float));
+
+  int error;
+  m_srcstate = src_new(SRC_SINC_FASTEST, 1, &error);
 
   if (m_debug)
     m_debugwindow.Enable(m_nrcolumns, m_nrlines, m_debugscale);
@@ -412,38 +420,38 @@ void CBitVis::ProcessAudio()
       m_fft.AddSample(m_buf[i]);
       m_samplecounter++;
 
-      if (m_scopebufpos == -1)
+      const float hys = 0.01;
+      if (m_hysstate == -1)
       {
-        const float hys = 0.1;
-        if ((m_prevsample < hys && m_buf[i] > hys) || (m_prevsample > hys && m_buf[i] < hys))
+        if (m_buf[i] < -hys)
+          m_hysstate = 1;
+      }
+      else if (m_hysstate == 1)
+      {
+        if (m_buf[i] > hys)
         {
-          m_scopebufpos = 0;
-          m_scopetime = audiotime;
+          m_hysstate = 0;
+          m_hystime = audiotime;
           m_hasaudio = true;
         }
       }
 
-      m_prevsample = m_buf[i];
+      SRC_DATA srcdata = {};
+      srcdata.data_in = m_buf + i;
+      srcdata.data_out = m_scopebuf + m_scopebufpos;
+      srcdata.input_frames = 1;
+      srcdata.output_frames = 1;
+      srcdata.src_ratio = (double)m_nrcolumns * 30.0 / samplerate;
 
-      if (m_scopebufpos >= 0)
+      src_process(m_srcstate, &srcdata);
+
+      if (srcdata.output_frames_gen)
       {
-        m_scopesample += m_buf[i];
-        m_scopesamples++;
-        if (m_scopesamples >= 11)
-        {
-          m_scopebuf[m_scopebufpos] = m_scopesample / m_scopesamples;
-          m_scopesample = 0.0;
-          m_scopesamples = 0;
-          m_scopebufpos++;
+        m_scopebufpos++;
 
-          if (m_scopebufpos == m_nrcolumns)
-          {
-            m_scopebufpos = -1;
-            memcpy(m_scopedisplaybuf, m_scopebuf, m_nrcolumns * sizeof(float));
-          }
-        }
+        if (m_scopebufpos == m_scopebufsize)
+          m_scopebufpos = 0;
       }
-
 
       if (m_samplecounter % 128 == 0)
       {
@@ -457,6 +465,8 @@ void CBitVis::ProcessAudio()
 
       if (m_samplecounter % (samplerate / m_fps) == 0)
       {
+        m_hysstate = -1;
+
         float start = 0.0f;
         float add = 1.0f;
         for (int j = 0; j < m_nrcolumns; j++)
@@ -475,7 +485,46 @@ void CBitVis::ProcessAudio()
           add += increase;
         }
 
-        if (m_hasaudio && m_scopebufpos == -1 && audiotime - m_scopetime > 100000)
+        int offset = 0;
+        float maxweight = 0.0;
+        for (int j = 0; j < m_scopebufsize - m_nrcolumns; j++)
+        {
+          float weight = 0.0f;
+          for (int k = 0; k < m_nrcolumns; k++)
+          {
+            int pos = m_scopebufpos + j + k;
+            if (pos >= m_scopebufsize)
+              pos -= m_scopebufsize;
+
+            weight += m_scopedisplaybuf[k] * m_scopebuf[pos];
+          }
+
+          if (weight > maxweight)
+          {
+            maxweight = weight;
+            offset = j;
+          }
+        }
+
+        int pos = m_scopebufpos + offset;
+        if (pos >= m_scopebufsize)
+          pos -= m_scopebufsize;
+
+        int size;
+        if (m_scopebufsize - pos < m_nrcolumns)
+          size = m_scopebufsize - pos;
+        else
+          size = m_nrcolumns;
+
+        memcpy(m_scopecorrbuf, m_scopebuf + pos, size * sizeof(float));
+        if (size < m_nrcolumns)
+          memcpy(m_scopecorrbuf + size, m_scopebuf, (m_nrcolumns - size) * sizeof(float));
+
+        const float interpolant = 0.5;
+        for (int j = 0; j < m_nrcolumns; j++)
+          m_scopedisplaybuf[j] = m_scopedisplaybuf[j] * (1.0 - interpolant) + m_scopecorrbuf[j] * interpolant;
+
+        if (m_hasaudio && audiotime - m_hystime > 5000000)
         {
           memset(m_scopedisplaybuf, 0, m_nrcolumns * sizeof(float));
           m_hasaudio = false;
@@ -570,6 +619,24 @@ void CBitVis::SendData(int64_t time)
   }
   else
   {
+    float scopemax = 0.0f;
+    for (int i = 0; i < m_nrcolumns; i++)
+    {
+      if (fabs(m_scopedisplaybuf[i]) > scopemax)
+        scopemax = fabs(m_scopedisplaybuf[i]);
+    }
+
+    float scopemul;
+    if (scopemax > 0.0f)
+      scopemul = Min(1.0f / scopemax, 10.0f);
+    else
+      scopemul = 1.0f;
+
+    if (scopemul < m_scopemul)
+      m_scopemul = scopemul;
+    else
+      m_scopemul = m_scopemul * 0.9 + scopemul * 0.1;
+
     for (int y = nrlines - 1; y >= 0; y--)
     {
       uint8_t line[m_nrcolumns / 4];
@@ -597,19 +664,19 @@ void CBitVis::SendData(int64_t time)
           const float mul = 0.25f;
           const float add = 0.75f;
 
-          curr = (m_scopedisplaybuf[pixelpos] * mul + add) * nrlines;
+          curr = (m_scopedisplaybuf[pixelpos] * m_scopemul * mul + add) * nrlines;
 
           if (pixelpos == 0)
             prev = curr;
           else
-            prev = (m_scopedisplaybuf[pixelpos - 1] * mul + add) * nrlines;
+            prev = (m_scopedisplaybuf[pixelpos - 1] * m_scopemul * mul + add) * nrlines;
 
           if (pixelpos == m_nrcolumns - 1)
             next = curr;
           else
-            next = (m_scopedisplaybuf[pixelpos + 1] * mul + add) * nrlines;
+            next = (m_scopedisplaybuf[pixelpos + 1] * m_scopemul * mul + add) * nrlines;
 
-          int bounds[2] = {Round32((prev + curr) * 0.5f), Round32((next + curr) * 0.5f)};
+          int bounds[2] = {Round32((prev + curr) * 0.5f) - 1, Round32((next + curr) * 0.5f) - 1};
 
           if (y == 0)
           {

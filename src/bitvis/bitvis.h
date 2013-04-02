@@ -23,6 +23,7 @@
 #include <vector>
 #include <deque>
 #include <utility>
+#include <samplerate.h>
 
 #include "jackclient.h"
 #include "fft.h"
@@ -73,13 +74,16 @@ class CBitVis : public CThread
     int          m_displayvolume;
     bool         m_hasaudio;
 
-    float        m_prevsample;
+    int          m_hysstate;
+    int64_t      m_hystime;
+
     float*       m_scopebuf;
+    int          m_scopebufsize;
+    float*       m_scopecorrbuf;
     float*       m_scopedisplaybuf;
     int          m_scopebufpos;
-    int64_t      m_scopetime;
-    float        m_scopesample;
-    int          m_scopesamples;
+    float        m_scopemul;
+    SRC_STATE*   m_srcstate;
 
     CCondition   m_condition;
     std::deque< std::pair<int64_t, CTcpData> > m_data;
