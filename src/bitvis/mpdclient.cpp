@@ -85,6 +85,7 @@ bool CMpdClient::GetCurrentSong()
 
   string artist;
   string title;
+  string file;
 
   data.Clear();
   while(1)
@@ -112,24 +113,17 @@ bool CMpdClient::GetCurrentSong()
           artist = tmpline.substr(1);
         else if (word == "Title:")
           title = tmpline.substr(1);
+        else if (word == "file:")
+          file = StripFilename(tmpline.substr(1));
       }
 
       if (line == "OK")
       {
         string songtext;
-        if (artist.empty() && title.empty())
-        {
-          songtext = "Wat? No title?";
-        }
+        if (artist.empty() || title.empty())
+          songtext = file;
         else
-        {
-          if (artist.empty())
-            artist = "Unknown artist";
-          if (title.empty())
-            title = "Unknown title";
-
           songtext = artist + " - " + title;
-        }
 
         SetCurrentSong(songtext);
         return true;
@@ -262,3 +256,24 @@ bool CMpdClient::GetVolume(int& volume)
   m_volumechanged = false;
   return changed;
 }
+
+std::string CMpdClient::StripFilename(const std::string& filename)
+{
+  //strip any preceding directories
+  size_t start = filename.rfind('/');
+  if (start == string::npos)
+    start = 0;
+  else if (start < filename.length() - 1)
+    start++;
+
+  //strip the extension
+  size_t end = filename.rfind('.');
+  size_t nchars;
+  if (end == string::npos || end == 0 || end <= start)
+    nchars = string::npos;
+  else
+    nchars = end - start;
+
+  return filename.substr(start, nchars);
+}
+

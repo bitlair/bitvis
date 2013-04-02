@@ -25,6 +25,7 @@ class CMpdClient : public CThread
     bool         GetPlayStatus();
     void         SetCurrentSong(const std::string& song);
     void         SetSockError();
+    std::string  StripFilename(const std::string& filename);
 
     int              m_port;
     std::string      m_address;
