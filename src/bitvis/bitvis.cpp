@@ -452,11 +452,15 @@ void CBitVis::SendData(int64_t time)
   bool playingchanged;
   bool isplaying = false;
   int  volume = 0;
+  int elapsed = 0;
   if (m_mpdclient)
   {
     isplaying = m_mpdclient->IsPlaying(playingchanged);
     if (m_mpdclient->GetVolume(volume))
       m_volumetime = GetTimeUs();
+
+    if (isplaying)
+      elapsed = Round32(m_mpdclient->GetElapsedState() * m_nrcolumns);
   }
 
   if (isplaying)
@@ -486,6 +490,8 @@ void CBitVis::SendData(int64_t time)
         if (y == nrlines - 1)
         {
           line[x / 4] |= 1 << (pixelcounter * 2 + 1);
+          if (x < elapsed)
+            line[x / 4] |= 1 << (pixelcounter * 2);
         }
         else if (x < m_displayvolume * m_nrcolumns / 100)
         {
@@ -524,10 +530,20 @@ void CBitVis::SendData(int64_t time)
 
           pixel <<= 2;
 
-          if (Round32(currpeak.value) == y || y == 0)
+          if (y == 0)
+          {
             pixel |= 2;
+            if (x * 4 + i < elapsed)
+              pixel |= 1;
+          }
+          else if (Round32(currpeak.value) == y)
+          {
+            pixel |= 2;
+          }
           else if (value > y)
+          {
             pixel |= 1;
+          }
 
           if (time - currpeak.time > 500000 && Round32(currpeak.value) > 0)
           {

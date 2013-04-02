@@ -18,6 +18,7 @@ CMpdClient::CMpdClient(std::string address, int port)
   m_playingchanged = false;
   m_volume = 0;
   m_volumechanged = false;
+  m_elapsedstate = 0.0;
 }
 
 CMpdClient::~CMpdClient()
@@ -147,8 +148,10 @@ bool CMpdClient::GetPlayStatus()
   }
 
   data.Clear();
-  bool isplaying = false;
-  int  volume = -1;
+  bool   isplaying = false;
+  int    volume = -1;
+  double elapsed = -1.0;
+  double total = 0.0;
   while(1)
   {
     if (m_socket.Read(data) != SUCCESS)
@@ -182,6 +185,33 @@ bool CMpdClient::GetPlayStatus()
           if (GetWord(tmpline, word) && StrToInt(word, parsevolume))
             volume = parsevolume;
         }
+        else if (word == "time:")
+        {
+          if (GetWord(tmpline, word))
+          {
+            size_t colon = word.find(':');
+            if (colon != string::npos && colon > 0 && colon < word.size() - 1)
+            {
+              double tmpelapsed;
+              double tmptotal;
+
+              if (elapsed < 0.0 && StrToFloat(word.substr(0, colon), tmpelapsed))
+                elapsed = tmpelapsed;
+
+              if (StrToFloat(word.substr(colon + 1), tmptotal) && tmptotal > 0.0)
+                total = tmptotal;
+            }
+          }
+        }
+        else if (word == "elapsed:")
+        {
+          if (GetWord(tmpline, word))
+          {
+            double tmpelapsed;
+            if (StrToFloat(word, tmpelapsed))
+              elapsed = tmpelapsed;
+          }
+        }
       }
 
       if (line == "OK")
@@ -200,6 +230,11 @@ bool CMpdClient::GetPlayStatus()
           m_volume = volume;
           m_volumechanged = true;
         }
+
+        if (total > 0.0 && elapsed >= 0.0)
+          m_elapsedstate = elapsed / total;
+        else
+          m_elapsedstate = 0.0;
 
         return true;
       }
@@ -255,6 +290,12 @@ bool CMpdClient::GetVolume(int& volume)
   bool changed = m_volumechanged;
   m_volumechanged = false;
   return changed;
+}
+
+double CMpdClient::GetElapsedState()
+{
+  CLock lock(m_condition);
+  return m_elapsedstate;
 }
 
 std::string CMpdClient::StripFilename(const std::string& filename)
