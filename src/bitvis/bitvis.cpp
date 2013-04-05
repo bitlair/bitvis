@@ -453,7 +453,7 @@ void CBitVis::ProcessAudio()
           m_scopebufpos = 0;
       }
 
-      if (m_samplecounter % 128 == 0)
+      if (m_samplecounter % (samplerate / 4 / m_fps) == 0)
       {
         m_fft.ApplyWindow();
         fftwf_execute(m_fft.m_plan);
