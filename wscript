@@ -66,7 +66,7 @@ def build(bld):
                       src/util/thread.cpp',
               use=['m','pthread','rt', 'jack', 'fftw3', 'fftw3f', 'samplerate', 'X11', 'Xrender'],
               includes='./src',
-              cxxflags='-Wall -g -DUTILNAMESPACE=BitVisUtil',
+              cxxflags='-Wall -g -DUTILNAMESPACE=BitVisUtil -O3',
               target='bitvis')
 
   bld.program(source='src/bitx11/main.cpp\
