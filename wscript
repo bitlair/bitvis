@@ -23,6 +23,7 @@ def configure(conf):
   conf.check(header_name='samplerate.h')
   conf.check(header_name='sys/ipc.h')
   conf.check(header_name='sys/shm.h')
+  conf.check(header_name='uriparser/Uri.h')
 
   if not conf.options.disable_vlc:
     conf.check(header_name='vlc/vlc.h')
@@ -38,6 +39,7 @@ def configure(conf):
   conf.check(lib='X11', uselib_store='X11')
   conf.check(lib='Xext', uselib_store='Xext')
   conf.check(lib='Xrender', uselib_store='Xrender')
+  conf.check(lib='uriparser', uselib_store='uriparser')
   conf.check(lib='m', uselib_store='m', mandatory=False)
   conf.check(lib='pthread', uselib_store='pthread', mandatory=False)
 
@@ -64,7 +66,7 @@ def build(bld):
                       src/util/condition.cpp\
                       src/util/tcpsocket.cpp\
                       src/util/thread.cpp',
-              use=['m','pthread','rt', 'jack', 'fftw3', 'fftw3f', 'samplerate', 'X11', 'Xrender'],
+              use=['m','pthread','rt', 'jack', 'fftw3', 'fftw3f', 'samplerate', 'uriparser', 'X11', 'Xrender'],
               includes='./src',
               cxxflags='-Wall -g -DUTILNAMESPACE=BitVisUtil -O3 -march=native',
               target='bitvis')

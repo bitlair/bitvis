@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 #include <sstream>
+#include <uriparser/Uri.h>
 
 #include "mpdclient.h"
 #include "util/timeutils.h"
@@ -315,6 +316,16 @@ std::string CMpdClient::StripFilename(const std::string& filename)
   else
     nchars = end - start;
 
-  return filename.substr(start, nchars);
+  string stripped = filename.substr(start, nchars);
+
+  //do a url decode
+  char* tmp = new char[stripped.length() + 1];
+  strcpy(tmp, stripped.c_str());
+  uriUnescapeInPlaceA(tmp);
+
+  stripped = tmp;
+  delete[] tmp;
+
+  return stripped;
 }
 
