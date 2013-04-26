@@ -68,7 +68,8 @@ def build(bld):
                       src/util/thread.cpp',
               use=['m','pthread','rt', 'jack', 'fftw3', 'fftw3f', 'samplerate', 'uriparser', 'X11', 'Xrender'],
               includes='./src',
-              cxxflags='-Wall -g -DUTILNAMESPACE=BitVisUtil -O3 -march=native',
+              cxxflags='-Wall -g -DUTILNAMESPACE=BitVisUtil -Ofast -flto -funroll-loops -funswitch-loops  -fmodulo-sched -fmodulo-sched-allow-regmoves -funsafe-loop-optimizations -ftracer -fivopts -ftree-loop-ivcanon -ftree-loop-im -ftree-loop-distribution -floop-parallelize-all -floop-block -floop-strip-mine -floop-interchange -fassociative-math -freciprocal-math -fno-trapping-math -fno-signed-zeros -march=native',
+              ldflags='-flto',
               target='bitvis')
 
   bld.program(source='src/bitx11/main.cpp\
