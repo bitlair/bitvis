@@ -82,7 +82,7 @@ def build(bld):
                       src/util/condition.cpp\
                       src/util/tcpsocket.cpp\
                       src/util/thread.cpp',
-              use=['m', 'rt', 'X11', 'Xrender', 'Xext'],
+              use=['m', 'rt', 'X11', 'Xrender', 'Xext', 'pthread'],
               includes='./src',
               cxxflags='-Wall -g -DUTILNAMESPACE=BitX11Util',
               target='bitx11')
@@ -98,7 +98,7 @@ def build(bld):
                         src/util/thread.cpp\
                         src/util/timeutils.cpp\
                         src/util/tcpsocket.cpp',
-                use=['m', 'rt', 'X11', 'Xrender', 'Xext', 'vlc'],
+                use=['m', 'rt', 'X11', 'Xrender', 'Xext', 'vlc', 'pthread'],
                 includes='./src',
                 cxxflags='-Wall -g -DUTILNAMESPACE=BitVlcUtil',
                 target='bitvlc')
