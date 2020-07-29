@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
+#include <complex>
 
 using namespace std;
 
@@ -460,7 +461,11 @@ void CBitVis::ProcessAudio()
 
         m_nrffts++;
         for (int j = 0; j < m_nrbins; j++)
-          m_fftbuf[j] += cabsf(m_fft.m_outbuf[j]) / m_fft.m_bufsize;
+        {
+          std::complex<float> bin;
+          memcpy(&bin, m_fft.m_outbuf[j], sizeof(bin));
+          m_fftbuf[j] += std::abs(bin) / m_fft.m_bufsize;
+        }
       }
 
       if (m_samplecounter % (samplerate / m_fps) == 0)
